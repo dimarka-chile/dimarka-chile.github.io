@@ -1,0 +1,1284 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>DIMARKA · Simulador de alertas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5.2.8/400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5.2.8/600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow-condensed@5.2.8/700.css">
+<style>
+/* Leaflet mínimo embebido: el mapa funciona aunque el CSS externo no cargue */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;touch-action:none;background:#dfe6ec;font:inherit}
+.leaflet-tile,.leaflet-marker-icon{user-select:none;-webkit-user-drag:none}
+.leaflet-tile{visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-marker-icon{display:block}
+.leaflet-container .leaflet-overlay-pane svg,.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}
+.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right;margin-right:10px}.leaflet-top .leaflet-control{margin-top:10px}
+.leaflet-bottom .leaflet-control{margin-bottom:4px}
+.leaflet-zoom-animated{transform-origin:0 0}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
+.leaflet-bar{box-shadow:0 1px 5px #0006;border-radius:8px}
+.leaflet-bar a,.leaflet-touch .leaflet-bar a{display:block;width:44px;height:44px;line-height:44px;text-align:center;text-decoration:none;background:#fff;color:#000;border-bottom:1px solid #ccc;font:700 22px sans-serif}
+.leaflet-tooltip{position:absolute;background:#fff;border-radius:4px;padding:3px 7px;font-size:13px;color:#111;white-space:nowrap;box-shadow:0 1px 3px #0006}
+.leaflet-control-attribution{background:#fffc;padding:0 5px;font-size:11px;color:#333}.leaflet-control-attribution a{color:#06c}
+
+/* ---------- Tema ---------- */
+:root{--bg:#0b1a2e;--pn:#10243f;--pn2:#0c1d34;--ln:#2b4a6b;--tx:#eef4fb;--mt:#b3c5d9;--rd:#c62828;--am:#f5b301;--amtx:#1f1500;--gn:#1e7d45;--bl:#4aa3ff;--ruta:#1c6fe0;--sim:#ffd54f}
+*{box-sizing:border-box}
+html{font-size:100%;-webkit-text-size-adjust:100%}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);overflow:hidden}
+body{font:1rem/1.4 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{height:100%;display:flex;flex-direction:column}
+button,input,select,output{font:inherit;color:var(--tx)}
+button{cursor:pointer;font-weight:600;min-height:2.75rem;min-width:2.75rem;border-radius:.5rem;border:1px solid var(--ln);background:#1b3a5f;padding:.45rem .8rem}
+button:hover{filter:brightness(1.12)}
+button:disabled{opacity:.55;cursor:default}
+:focus-visible{outline:3px solid var(--sim);outline-offset:2px}
+input[type=number]{background:#081425;border:1px solid var(--ln);border-radius:.5rem;padding:.5rem .6rem;min-height:2.75rem;width:100%}
+a{color:#9fd0ff}
+[hidden]{display:none!important}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.err{padding:1rem;margin:1rem;background:#fff;color:#12202f;border-radius:.6rem}
+
+/* ---------- Barra superior y rótulo de simulación ---------- */
+#bar{display:flex;align-items:center;gap:.3rem;padding:.15rem .35rem;background:#071222;min-height:3.1rem}
+#brand{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 1.2rem 'Barlow Condensed',sans-serif;letter-spacing:.3px;padding-left:.2rem}
+#brand span{font-weight:700;color:var(--mt)}
+.ib{padding:0;width:2.75rem;background:transparent;border-color:transparent;font-size:1.05rem}
+.simstrip{background:var(--sim);color:#1a1200;text-align:center;font:700 .8rem/1.7 Barlow,sans-serif;letter-spacing:.4px}
+
+/* ---------- Inicio ---------- */
+#inicio{flex:1;overflow:auto;padding:1rem;width:100%;max-width:44rem;margin:0 auto}
+#inicio h1{font:700 1.9rem/1.1 'Barlow Condensed',sans-serif;margin:.4rem 0 .4rem}
+#inicio p{color:var(--mt);margin:.3rem 0 .8rem}
+.card{display:flex;gap:.9rem;align-items:center;width:100%;text-align:left;padding:1rem;margin:.7rem 0;background:var(--pn);border:2px solid var(--ln);border-radius:.9rem}
+.card .ic{font-size:2.3rem;flex:none}
+.card b{display:block;font:700 1.4rem 'Barlow Condensed',sans-serif}
+.card small{display:block;color:var(--mt);font-weight:400;font-size:.9rem}
+.lnk{width:100%;background:transparent;margin-top:.5rem}
+
+/* ---------- Vista de escenario ---------- */
+#esc{flex:1;min-height:0;display:flex;flex-direction:column}
+#panel{background:var(--pn);border-bottom:2px solid var(--ln);max-height:50%;overflow:auto;overscroll-behavior:contain}
+#esc.alerta #panel{max-height:54%}
+#form,#sum{padding:.6rem .85rem .9rem}
+h2{margin:.1rem 0 .5rem;font:700 1.3rem/1.15 'Barlow Condensed',sans-serif}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.g label{display:flex;flex-direction:column;font-size:.85rem;color:var(--mt);gap:.15rem}
+.g .w{grid-column:1/-1}
+output{display:flex;align-items:center;min-height:2.75rem;font:700 1.25rem 'Barlow Condensed',sans-serif}
+.opts{border:0;padding:0;margin:.4rem 0 0}
+.sw{display:flex;align-items:center;gap:.6rem;min-height:2.75rem;font-size:.95rem;cursor:pointer}
+.sw input{width:1.45rem;height:1.45rem;accent-color:var(--bl);flex:none;margin:0}
+.go{width:100%;margin-top:.55rem;background:var(--rd);border:2px solid #ff8a80;color:#fff;font:700 1.5rem 'Barlow Condensed',sans-serif;letter-spacing:.6px;padding:.55rem}
+.st{color:var(--mt);font-size:.88rem;margin:.45rem 0}
+.sm{color:var(--mt);font-size:.84rem;margin:.45rem 0}
+.sec{width:100%;margin-top:.45rem;background:transparent}
+#dg{font-size:.8rem;white-space:pre-wrap;margin:.45rem 0 0;color:var(--mt);font-family:inherit;background:#081425;border-radius:.5rem;padding:.55rem}
+details{margin:.45rem 0;background:var(--pn2);border:1px solid var(--ln);border-radius:.6rem;padding:0 .65rem}
+summary{cursor:pointer;min-height:2.75rem;display:flex;align-items:center;font-weight:600}
+details[open]{padding-bottom:.5rem}
+.tl{list-style:none;padding:0;margin:.2rem 0;font-size:.9rem}
+.tl li{display:flex;gap:.55rem;padding:.15rem 0}.tl b{min-width:3.1rem;flex:none}
+table.r{width:100%;border-collapse:collapse;font-size:.86rem}
+table.r td,table.r th{border-top:1px solid var(--ln);padding:.35rem .3rem;vertical-align:top;text-align:left}
+table.r th{color:var(--mt);font-weight:600}
+
+/* ---------- Resultado de la alerta ---------- */
+#banner{padding:.6rem .7rem;border-radius:.6rem;text-align:center;font:700 1.6rem/1.12 'Barlow Condensed',sans-serif;background:var(--rd);color:#fff;letter-spacing:.3px}
+#banner.ambar{background:var(--am);color:var(--amtx)}
+#banner.verde{background:var(--gn);color:#fff}
+#banner.gris{background:#37506d;color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.5rem}
+.row>button{flex:1 1 auto}
+.big{font-size:1.12rem;background:#0f5bb5;border-color:#7cb7ff}
+#mute{background:#3b1f1f;border-color:#a33}
+#ev{color:var(--mt);font-size:.86rem;margin-top:.5rem}#ev b{color:#fff}
+#instr{margin:.55rem 0 .3rem;padding-left:1.5rem;font-size:1.2rem;font-weight:600;line-height:1.33}
+#instr li{margin:.22rem 0}
+#det{font-size:.97rem}.k{color:var(--mt)}
+.warn{color:#ffab9f;font-weight:600}.ok{color:#8ee6b0;font-weight:600}
+.chip{display:inline-block;background:#081425;border:1px solid var(--ln);border-radius:1rem;padding:.12rem .6rem;margin:.2rem .25rem 0 0;font-size:.88rem}
+.btn{display:inline-flex;align-items:center;min-height:2.75rem;margin-top:.45rem;padding:.45rem .85rem;border-radius:.5rem;background:#1b3a5f;border:1px solid var(--ln);color:#fff;text-decoration:none;font-weight:600}
+#leer,#tpmr{flex:1 1 10rem}
+#tpmr{font-size:1.05rem;background:#1b3a5f;border:2px solid #7cb7ff}
+#tpmr[aria-pressed=true]{background:#ffd54f;color:#1a1200;border-color:#ffd54f}
+#pmrq{background:#2a1416;border:1px solid #a33;border-radius:.6rem;padding:.45rem .6rem;margin:.45rem 0}
+#ru{color:var(--mt);font-size:.86rem;margin-top:.35rem}
+.aviso{background:#3a2c05;border:1px solid #9a7a1a;color:#ffe59a;border-radius:.5rem;padding:.35rem .55rem;font-size:.88rem;margin:.35rem 0}
+
+/* ---------- Mapa ---------- */
+#mapwrap{position:relative;flex:1;min-height:11rem}
+#map{position:absolute;inset:0}
+#locs{position:absolute;left:.5rem;top:.5rem;z-index:1000;display:flex;gap:.2rem;background:#0b1a2ef0;border-radius:999px;padding:.2rem;box-shadow:0 2px 10px #0008}
+#locs button{border:0;border-radius:999px;background:transparent;padding:0;width:2.75rem}
+#locs button.on{background:var(--bl);color:#04121f}
+#locname{position:absolute;left:.5rem;top:3.85rem;z-index:1000;background:#0b1a2ef0;border-radius:.5rem;padding:.2rem .55rem;font-size:.84rem;max-width:calc(100% - 4.6rem)}
+#mapbtns{position:absolute;left:.5rem;bottom:1.5rem;z-index:1000;display:flex;gap:.3rem}
+#mapbtns button{background:#0b1a2ef0;font-size:.88rem}
+#ley{position:absolute;left:.5rem;bottom:4.7rem;z-index:1001;background:#0b1a2ef8;border:1px solid var(--ln);border-radius:.6rem;padding:.5rem .65rem;font-size:.84rem;max-width:min(23rem,calc(100% - 1rem));max-height:60%;overflow:auto}
+#ley div{display:flex;align-items:center;gap:.45rem;margin:.15rem 0}
+.sq{display:inline-block;width:1.2rem;height:.9rem;border-radius:.15rem;flex:none}
+#anim{position:absolute;left:.5rem;right:.5rem;bottom:1.5rem;z-index:1000;display:flex;flex-wrap:wrap;align-items:center;gap:.25rem;background:#0b1a2ef2;border-radius:.7rem;padding:.25rem;box-shadow:0 2px 10px #0008}
+#anim button{padding:.3rem .5rem}
+#avel{min-width:3.4rem}
+#anim .on{background:var(--bl);color:#04121f}
+#aclock{font:700 1.25rem 'Barlow Condensed',sans-serif;min-width:4.7rem;text-align:center}
+#esc.anim #mapbtns{bottom:5.1rem}
+#esc.anim #ley{bottom:8.3rem}
+#sos{position:absolute;right:.6rem;bottom:1.7rem;z-index:1002;width:4.6rem;height:4.6rem;border-radius:50%;background:#d50000;border:3px solid #fff;color:#fff;font:700 1.5rem 'Barlow Condensed',sans-serif;box-shadow:0 3px 14px #000a;padding:0}
+#esc.anim #sos{bottom:5.3rem}
+#sos.destacado{width:5.6rem;height:5.6rem;font-size:1.8rem;animation:pulso 1.2s infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 #ff5252cc}70%{box-shadow:0 0 0 18px #ff525200}100%{box-shadow:0 0 0 0 #ff525200}}
+.pin{color:#fff;border-radius:14px;padding:3px 9px;font:700 13px Barlow,sans-serif;white-space:nowrap;border:2px solid #fff;transform:translate(-50%,-125%);background:var(--bl);display:inline-block;box-shadow:0 1px 4px #0008}
+.pin.ok{background:var(--gn)}
+.frente{width:20px;height:20px;transform:translate(-50%,-50%);border-radius:50%;background:#6d3b00;border:3px solid #ffcc80;animation:pulso 1s infinite}
+.ref{display:inline-block;transform:translate(-50%,-50%);font-size:18px;line-height:1;background:#fff;border-radius:50%;padding:4px;border:2px solid #333;box-shadow:0 1px 4px #0008}
+.flecha{display:inline-block;transform-origin:50% 50%;font-size:26px;color:var(--ruta);text-shadow:0 0 3px #fff}
+.z-rayas{fill:url(#rayas)!important;fill-opacity:1!important}
+.sosPin{display:inline-block;transform:translate(-50%,-50%);color:#fff;font:700 12px Barlow,sans-serif;border:2px solid #fff;border-radius:999px;padding:2px 6px;box-shadow:0 1px 4px #000a}
+
+/* ---------- Capas superpuestas ---------- */
+.ov{position:fixed;inset:0;z-index:5000;background:#000c;display:flex;align-items:center;justify-content:center;padding:.8rem}
+.dlg{background:var(--pn);border:1px solid var(--ln);border-radius:1rem;max-width:36rem;width:100%;max-height:100%;overflow:auto;padding:1rem}
+.dlg h2{display:flex;align-items:center;gap:.5rem}
+.dlg h3{font:700 1.15rem 'Barlow Condensed',sans-serif;margin:1rem 0 .3rem}
+.dlg p,.dlg li{font-size:.94rem}
+.x{float:right;background:transparent}
+.sim2{display:inline-block;background:var(--sim);color:#1a1200;font:700 .78rem Barlow,sans-serif;border-radius:.3rem;padding:.1rem .45rem;letter-spacing:.3px;vertical-align:middle}
+#sae{background:#04070bf7;z-index:6000;align-items:flex-start;overflow:auto}
+#sae .box{max-width:30rem;width:100%;margin:auto;display:flex;flex-direction:column;gap:.7rem;padding:.5rem 0}
+.saecard{background:#1b1e25;border-radius:1.1rem;padding:1rem 1.05rem;border:1px solid #3d434f;box-shadow:0 6px 30px #000c}
+.saehead{display:flex;align-items:center;gap:.6rem;font:700 1.45rem 'Barlow Condensed',sans-serif}
+.saetxt{font-size:1.22rem;line-height:1.38;margin:.6rem 0 .4rem;word-wrap:break-word}
+.saemeta{color:#aab3c0;font-size:.84rem}
+.saecnt.warn{color:#ff8a80}
+.opt{display:flex;align-items:center;gap:.65rem;min-height:3rem;padding:.4rem .65rem;border:1px solid var(--ln);border-radius:.6rem;margin:.35rem 0;background:#0b1a2e;cursor:pointer}
+.opt input{width:1.3rem;height:1.3rem;flex:none;margin:0}
+#desp{position:fixed;inset:0;z-index:4000;background:var(--bg);display:flex;flex-direction:column}
+#despBody{flex:1;min-height:0;display:flex;flex-direction:column}
+#mapD{flex:1;min-height:13rem}
+#despSide{max-height:48%;overflow:auto;padding:.5rem .8rem;border-top:2px solid var(--ln)}
+.req{display:flex;gap:.6rem;align-items:flex-start;padding:.5rem .3rem;border:0;border-bottom:1px solid var(--ln);width:100%;text-align:left;background:transparent;border-radius:0;font-weight:400}
+.pr{font:700 1rem 'Barlow Condensed',sans-serif;border-radius:.35rem;padding:.08rem .45rem;color:#fff;flex:none}
+.p1{background:#b71c1c}.p2{background:#e65100}.p3{background:#1565c0}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (min-width:900px){
+  #esc{flex-direction:row}
+  #panel,#esc.alerta #panel{width:27rem;flex:none;max-height:none;border-bottom:0;border-right:2px solid var(--ln)}
+  #despBody{flex-direction:row}
+  #despSide{max-height:none;width:27rem;flex:none;border-top:0;border-left:2px solid var(--ln)}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <pattern id="rayas" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+    <rect width="10" height="10" fill="#f5b301" fill-opacity=".16"/><line x1="0" y1="0" x2="0" y2="10" stroke="#a87400" stroke-width="3.5" stroke-opacity=".6"/>
+  </pattern>
+</defs></svg>
+
+<div id="app">
+  <header id="bar">
+    <button id="home" class="ib" type="button" aria-label="Volver a la lista de escenarios" hidden>◀</button>
+    <div id="brand">DIMARKA <span id="bartit">· Simulador de alertas</span></div>
+    <button id="fmen" class="ib" type="button" aria-label="Letra más pequeña">A−</button>
+    <button id="fmas" class="ib" type="button" aria-label="Letra más grande">A+</button>
+    <button id="info" class="ib" type="button" aria-label="Acerca de esta simulación">ⓘ</button>
+  </header>
+  <div class="simstrip" role="note">SIMULACIÓN · No oficial · Prototipo estudiantil</div>
+
+  <main id="inicio">
+    <!-- Visible solo si el archivo se abre en un visor que no ejecuta JavaScript (vista previa de WhatsApp, Archivos, visor HTML de Android) -->
+    <div id="sinjs" class="aviso" role="alert" style="font-size:1rem;margin-bottom:.8rem"><b>¿Los botones no responden?</b> Está viendo una vista previa que no ejecuta el simulador. Ábralo en un navegador: en Android, toque ⋮ o “Abrir con” y elija Chrome. En iPhone, ábralo desde un enlace web: Safari no ejecuta archivos guardados en el teléfono.</div>
+    <script>document.getElementById('sinjs').hidden=true</script>
+    <h1>Simulador de alertas DIMARKA</h1>
+    <p>Pruebe cómo una alerta al celular con un enlace liviano, sin instalar ninguna app, puede decirle a cada persona qué hacer según dónde está.</p>
+    <button class="card" type="button" data-esc="tsunami_valpo"><span class="ic" aria-hidden="true">🌊</span><span><b>Tsunami · Valparaíso</b><small>Sismo en el mar. Ruta a pie hacia zonas altas y lejos de la costa.</small></span></button>
+    <button class="card" type="button" data-esc="aluvion_lascondes"><span class="ic" aria-hidden="true">⛰️</span><span><b>Aluvión · Las Condes</b><small>Reconstrucción del 8 de octubre de 2026. Salida lateral del cauce o evacuación vertical.</small></span></button>
+    <button class="lnk" type="button" id="iniDesp">Vista Centro de Despacho (simulada)</button>
+    <button class="lnk" type="button" id="iniInfo">Acerca de esta simulación</button>
+    <p class="sm">Simulación con reglas ilustrativas. No usa datos ni logos oficiales y no envía nada a ningún servicio de emergencia.</p>
+  </main>
+
+  <section id="esc" hidden aria-label="Escenario">
+    <div id="panel">
+      <div id="form">
+        <div id="params"></div>
+        <fieldset class="opts"><legend class="sr">Opciones</legend>
+          <label class="sw"><input id="snd" type="checkbox" checked> Sonido y vibración de alerta</label>
+        </fieldset>
+        <button id="go" class="go" type="button">EMITIR ALERTA</button>
+        <p id="zst" class="st" role="status" aria-live="polite"></p>
+        <div id="nota" class="sm"></div>
+        <button id="diag" type="button" class="sec">Diagnóstico de servicios</button>
+        <pre id="dg" hidden aria-live="polite"></pre>
+      </div>
+      <div id="sum" hidden>
+        <div id="banner" role="status" aria-live="assertive" aria-atomic="true"></div>
+        <div class="row"><button id="leer" type="button" class="big">🔊 Escuchar instrucciones</button><button id="tpmr" type="button" aria-pressed="false" aria-describedby="tpmrD">♿ Movilidad reducida: <b>No</b></button></div>
+        <span id="tpmrD" class="sr">Actívelo si usted, o alguien que va con usted, camina lento o no puede usar escaleras. La ruta y los tiempos se recalculan.</span>
+        <div class="row"><button id="mute" type="button" hidden>🔇 Silenciar alarma</button></div>
+        <div id="ev"></div>
+        <ol id="instr"></ol>
+        <div id="pmrq" hidden><b>¿Puede llegar a un 2º piso?</b>
+          <div class="row"><button type="button" id="pisoSi">Sí, puedo</button><button type="button" id="pisoNo">No puedo</button></div></div>
+        <div id="det"></div>
+        <div id="evitar"></div>
+        <div id="ru"></div>
+        <p class="sm">El SAE llega a toda la comuna; esta página adapta la instrucción a su ubicación.</p>
+        <div class="row"><button id="fase2" type="button" hidden>Fase 2: después</button><button id="edit" type="button">Editar datos del evento</button><button id="vdesp" type="button">Vista Centro de Despacho</button></div>
+      </div>
+    </div>
+    <div id="mapwrap">
+      <div id="map" role="region" aria-label="Mapa: toque para mover su ubicación"></div>
+      <div id="locs" role="group" aria-label="Ubicación simulada"><button type="button" data-i="0" class="on" aria-label="Ubicación 1">1</button><button type="button" data-i="1" aria-label="Ubicación 2">2</button><button type="button" data-i="2" aria-label="Ubicación 3">3</button><button type="button" id="dice" aria-label="Sortear ubicaciones">🎲</button></div>
+      <div id="locname" aria-live="polite"></div>
+      <div id="mapbtns"><button id="bley" type="button" aria-expanded="false" aria-controls="ley">Leyenda</button><button id="bmap" type="button">Cambiar mapa</button></div>
+      <div id="ley" hidden></div>
+      <div id="anim" hidden role="group" aria-label="Reproducción del avance del aluvión">
+        <button id="aplay" type="button" aria-label="Reproducir el avance del aluvión">▶</button>
+        <button id="avel" type="button" aria-label="Velocidad ×1. Toque para cambiar a ×10">×1</button>
+        <span id="aclock" aria-label="Hora simulada">17:00:00</span>
+        <button id="areset" type="button" aria-label="Volver a las 17:00">↺</button>
+        <button id="a1741" type="button" aria-label="Ir a las 17:41, hora del primer aviso público real">17:41</button>
+      </div>
+      <button id="sos" type="button" hidden aria-label="Pedir ayuda (SOS)">SOS</button>
+    </div>
+  </section>
+</div>
+
+<!-- Pantalla de alerta SAE simulada -->
+<div id="sae" class="ov" role="alertdialog" aria-modal="true" aria-labelledby="saeT" aria-describedby="saeTxt" hidden>
+  <div class="box">
+    <div style="text-align:center"><span class="sim2">SIMULACIÓN · No oficial</span></div>
+    <div class="saecard">
+      <div class="saehead"><span aria-hidden="true">⚠️</span><span id="saeT">Alerta de Emergencia</span></div>
+      <div class="saemeta"><span id="saeEsc"></span> · <span id="saeHora"></span></div>
+      <p id="saeTxt" class="saetxt"></p>
+      <div class="saemeta"><span id="saeLink"></span> (enlace de ejemplo) · <span id="saeCnt" class="saecnt"></span></div>
+    </div>
+    <button id="saeVer" type="button" class="big" style="font-size:1.25rem;min-height:3.4rem">Ver mapa y ruta</button>
+    <button id="saeMute" type="button">🔇 Silenciar</button>
+    <p class="saemeta" style="text-align:center">El SAE llega a toda la comuna; esta página adapta la instrucción a su ubicación.</p>
+  </div>
+</div>
+
+<!-- SOS -->
+<div id="sosm" class="ov" role="dialog" aria-modal="true" aria-labelledby="sosT" hidden>
+  <div class="dlg">
+    <button type="button" class="x" id="sosX" aria-label="Cerrar">✕</button>
+    <h2 id="sosT">🆘 Pedir ayuda <span class="sim2">SIMULACIÓN</span></h2>
+    <div id="sos1">
+      <p>¿Qué le pasa? Elija una opción.</p>
+      <div role="radiogroup" aria-label="Tipo de ayuda" id="sosTipos"></div>
+      <label style="display:block;margin-top:.5rem">¿Cuántas personas? (opcional)<input id="sosPers" type="number" min="1" max="50" inputmode="numeric"></label>
+      <p id="sosErr" class="warn" role="alert"></p>
+      <div class="row"><button id="sosNext" type="button" class="big">Continuar</button><button id="sosCan" type="button">Cancelar</button></div>
+    </div>
+    <div id="sos2" hidden>
+      <p><b>Confirme su solicitud de ayuda:</b></p>
+      <p id="sosRes"></p>
+      <div class="row"><button id="sosSend" type="button" class="go" style="font-size:1.25rem">Sí, enviar solicitud</button><button id="sosBack" type="button">Volver</button></div>
+    </div>
+    <div id="sos3" hidden>
+      <p class="ok" style="font-size:1.15rem">Solicitud enviada (simulada).</p>
+      <p style="font-size:1.1rem">Quédese donde está si es seguro; suba a un piso alto si puede.</p>
+      <p id="sosPri" class="sm"></p>
+      <div class="row"><button id="sosOk" type="button" class="big">Cerrar</button><button id="sosVer" type="button">Ver en Centro de Despacho</button></div>
+    </div>
+    <p class="sm">No se envía nada a Bomberos, Carabineros ni SAMU: la solicitud queda solo en esta página.</p>
+  </div>
+</div>
+
+<!-- Centro de Despacho simulado -->
+<div id="desp" role="dialog" aria-modal="true" aria-labelledby="despT" hidden>
+  <header id="bar2" style="display:flex;align-items:center;gap:.4rem;padding:.2rem .4rem;background:#071222;min-height:3.1rem">
+    <button id="despX" class="ib" type="button" aria-label="Cerrar Centro de Despacho">◀</button>
+    <div id="despT" style="flex:1;font:700 1.15rem 'Barlow Condensed',sans-serif">Centro de Despacho (simulado)</div>
+  </header>
+  <div class="simstrip">SIMULACIÓN · No oficial · Ninguna solicitud llega a servicios reales</div>
+  <div id="despBody">
+    <div id="mapD" role="region" aria-label="Mapa de solicitudes de ayuda"></div>
+    <div id="despSide">
+      <div class="row" role="group" aria-label="Escenario"><button type="button" data-desc="tsunami_valpo">🌊 Tsunami</button><button type="button" data-desc="aluvion_lascondes">⛰️ Aluvión</button></div>
+      <div class="row"><button id="despGen" type="button">Generar 15 solicitudes de ejemplo</button><button id="despClr" type="button">Vaciar</button></div>
+      <p class="sm">Orden: prioridad (P1 primero) y antigüedad. P1: movilidad reducida o atrapado, en zona roja · P2: herido · P3: resto.</p>
+      <div id="despList" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Acerca de esta simulación -->
+<div id="acerca" class="ov" role="dialog" aria-modal="true" aria-labelledby="acT" hidden>
+  <div class="dlg">
+    <button type="button" class="x" id="acX" aria-label="Cerrar">✕</button>
+    <h2 id="acT">Acerca de esta simulación <span class="sim2">No oficial</span></h2>
+    <div id="acBody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/*<DATOS>*/
+// ====================================================================================
+// DATOS EMBEBIDOS · generados por tools/ (node aluvion_datos.mjs, tsunami_datos.mjs, embeber.mjs).
+// No editar a mano: regenerar con los scripts (ver tools/README.md).
+// ====================================================================================
+// ALUVION_EJE (GeoJSON, MultiLineString, coordenadas [lon, lat]).
+// RECONSTRUCCIÓN a partir de cierres viales (Transporte Informa, 9-oct-2026) y prensa; NO es un levantamiento técnico.
+// Geometrías de calles: OpenStreetMap vía Overpass, obtenidas el 2026-10-11. Cota: Open-Meteo (DEM Copernicus 90 m).
+// Cada ramal está orientado de mayor a menor cota (el flujo siempre baja).
+//   Ramal A · General Blanche: 1741 m, cota 927→818 m. Ways OSM: 406847603, 454069783, 1341925105, 1228115813, 1228115812, 654731313, 654731316
+//   Ramal B · Quebrada Honda: 1933 m, cota 927→827 m. Ways OSM: 406847603, 454069783, 1341925105, 1228115813, 1228115812, 654731313, 158806287, 221525330, 1341944013, 483478496
+//   Ramal C · Av. La Plaza y Camino El Alba: 3821 m, cota 927→718 m. Ways OSM: 454071019, 406847600, 23167825, 1345266344, 1345266343, 1343534548, 1362882030, 1343534549, 1343534550, 454395824, 1052597638, 201270469, 97167494, 1344414172, 663924997, 1343855411, 1343855410, 209209289, 209209288, 663909350, 929874776, 1345206392, 1345206391, 1346420985, 97167506, 1345196085, 255928352, 1345196082, 255928358, 1346420983, 1346420982, 255928354, 1345209280, 255928362, 681613015, 681613012, 681613013, 406847601, 255928364, 1353712277, 1353712278, 273276122
+//   Ramal E · Paul Harris y Av. Cristóbal Colón (alcance reportado, A VERIFICAR): 4181 m, cota 745→680 m. Ways OSM: 273278487, 1455013890, 1288199984, 1288199985, 1346636256, 1346636257, 24588975, 1111852343, 450121954, 1288194621, 483490688, 483490686, 1288185528, 1288185527, 207738650, 1288185525, 858326539, 207736294, 1191940738, 1288194624, 135711821, 1191940741, 24413045, 69192155, 135711817, 207720819, 690326679, 438657468, 454062197, 922360010, 264499714, 923905444, 240278987
+const ALUVION_EJE={"type":"Feature","properties":{"nota":"Reconstrucción a partir de cierres viales y prensa; no es un levantamiento técnico.","obtenido":"2026-10-11T19:56:42.448Z","cabecera":[-33.40137,-70.50618],"abanico":[-33.4062,-70.54345],"ramales":[{"id":"A","nombre":"General Blanche","desde":"Av. La Plaza × Álvaro del Portillo (cabecera)","hasta":"General Blanche × Las Condesas","verificar":false,"len":1741,"calles":[[0,"Av. Álvaro del Portillo"],[365,"General Blanche"]],"ways":[406847603,454069783,1341925105,1228115813,1228115812,654731313,654731316],"z":[927,927,921,911,911,908,908,887,887,882,865,865,861,854,854,841,841,818]},{"id":"B","nombre":"Quebrada Honda","desde":"Cabecera → General Blanche → San Ramón","hasta":"Quebrada Honda × Colina Vista Hermosa","verificar":false,"len":1933,"calles":[[0,"Av. Álvaro del Portillo"],[365,"General Blanche"],[712,"San Ramón"],[766,"Quebrada Honda"]],"ways":[406847603,454069783,1341925105,1228115813,1228115812,654731313,158806287,221525330,1341944013,483478496],"z":[927,927,921,911,911,908,887,882,882,881,881,868,861,855,855,853,849,837,834,834,831,828,827]},{"id":"C","nombre":"Av. La Plaza y Camino El Alba","desde":"Cabecera → Av. La Plaza → Camino El Alba","hasta":"Camino El Alba × Padre Hurtado (Pueblito Los Dominicos)","verificar":false,"len":3821,"calles":[[0,"Av. La Plaza"],[203,"Camino El Alba"]],"ways":[454071019,406847600,23167825,1345266344,1345266343,1343534548,1362882030,1343534549,1343534550,454395824,1052597638,201270469,97167494,1344414172,663924997,1343855411,1343855410,209209289,209209288,663909350,929874776,1345206392,1345206391,1346420985,97167506,1345196085,255928352,1345196082,255928358,1346420983,1346420982,255928354,1345209280,255928362,681613015,681613012,681613013,406847601,255928364,1353712277,1353712278,273276122],"z":[927,927,927,930,925,906,906,886,879,879,879,855,850,840,835,830,826,792,787,783,783,781,778,773,773,766,766,763,760,750,750,745,733,718,718]},{"id":"E","nombre":"Paul Harris y Av. Cristóbal Colón","desde":"Camino El Alba × Paul Harris","hasta":"Av. Cristóbal Colón × Av. Manquehue","verificar":true,"len":4181,"calles":[[0,"Paul Harris"],[1298,"Av. Cristóbal Colón"]],"ways":[273278487,1455013890,1288199984,1288199985,1346636256,1346636257,24588975,1111852343,450121954,1288194621,483490688,483490686,1288185528,1288185527,207738650,1288185525,858326539,207736294,1191940738,1288194624,135711821,1191940741,24413045,69192155,135711817,207720819,690326679,438657468,454062197,922360010,264499714,923905444,240278987],"z":[745,726,722,726,714,708,694,697,686,685,683,683,685,688,688,678,680,680]}]},"geometry":{"type":"MultiLineString","coordinates":[[[-70.50618,-33.40137],[-70.50661,-33.40121],[-70.50698,-33.40116],[-70.50846,-33.4012],[-70.50915,-33.4013],[-70.50943,-33.40139],[-70.50984,-33.40159],[-70.51215,-33.40282],[-70.5125,-33.40291],[-70.51278,-33.40292],[-70.51507,-33.40273],[-70.51572,-33.40275],[-70.51619,-33.40281],[-70.51722,-33.40303],[-70.5173,-33.403],[-70.5192,-33.40341],[-70.51942,-33.40343],[-70.52422,-33.40311]],[[-70.50618,-33.40137],[-70.50661,-33.40121],[-70.50698,-33.40116],[-70.50846,-33.4012],[-70.50901,-33.40126],[-70.50957,-33.40145],[-70.51215,-33.40282],[-70.5126,-33.40292],[-70.51325,-33.40288],[-70.51304,-33.40334],[-70.51319,-33.40342],[-70.51471,-33.40483],[-70.51538,-33.40529],[-70.51622,-33.40569],[-70.51631,-33.40577],[-70.51662,-33.40587],[-70.51729,-33.40616],[-70.51958,-33.40725],[-70.52002,-33.40737],[-70.52073,-33.40746],[-70.52136,-33.4077],[-70.52261,-33.40833],[-70.52347,-33.4089]],[[-70.50618,-33.40137],[-70.50628,-33.40116],[-70.50637,-33.40084],[-70.50655,-33.39957],[-70.50731,-33.39948],[-70.50931,-33.3995],[-70.50995,-33.39957],[-70.51322,-33.40049],[-70.51339,-33.40056],[-70.5138,-33.40084],[-70.51399,-33.4009],[-70.51735,-33.40124],[-70.5176,-33.40129],[-70.51962,-33.40146],[-70.52028,-33.40141],[-70.52099,-33.40145],[-70.52176,-33.40144],[-70.52874,-33.4009],[-70.52934,-33.40088],[-70.53023,-33.40094],[-70.53074,-33.40102],[-70.53147,-33.4012],[-70.53208,-33.40142],[-70.53267,-33.4017],[-70.53294,-33.40185],[-70.53431,-33.40283],[-70.53471,-33.40307],[-70.53559,-33.4037],[-70.53601,-33.40394],[-70.53671,-33.40429],[-70.5369,-33.40435],[-70.53834,-33.40492],[-70.53941,-33.40524],[-70.54275,-33.40598],[-70.54345,-33.4062]],[[-70.53831,-33.40499],[-70.53648,-33.4095],[-70.5344,-33.41489],[-70.53408,-33.4161],[-70.53652,-33.41612],[-70.53751,-33.41619],[-70.53919,-33.41636],[-70.54275,-33.41685],[-70.54929,-33.41768],[-70.5518,-33.41807],[-70.55344,-33.41824],[-70.55399,-33.41821],[-70.55504,-33.418],[-70.55697,-33.41769],[-70.55735,-33.41765],[-70.56416,-33.4165],[-70.56439,-33.4165],[-70.56473,-33.41659]]]}};
+// Parámetros de las zonas (m). Las zonas de abajo se generaron con estos valores (tools/aluvion_datos.mjs).
+const ZONAS_CFG={"rojaCabecera":150,"rojaAbanico":300,"amarilla":250,"precaucion":100,"cauce":40,"margenDestino":50,"offsetPuntos":100,"pasoPuntos":150};
+// Zonas (GeoJSON [lon, lat]). roja = buffer variable del eje (150→300 m) ∪ "zona más afectada" (La Tercera);
+// amarilla = roja + 250 m; precaucion = 100 m del ramal E (a verificar); cauce = 40 m del eje (ninguna ruta lo cruza; no se dibuja).
+const ALUVION_ZONAS={"roja":{"type":"Polygon","coordinates":[[[-70.54668,-33.4062],[-70.54652,-33.40704],[-70.54606,-33.40779],[-70.54535,-33.40838],[-70.54445,-33.40877],[-70.54345,-33.4089],[-70.54242,-33.40876],[-70.54224,-33.40919],[-70.52587,-33.40894],[-70.52576,-33.40952],[-70.52542,-33.41008],[-70.52489,-33.41053],[-70.52421,-33.41081],[-70.52347,-33.41091],[-70.52273,-33.41081],[-70.52206,-33.41053],[-70.52122,-33.40992],[-70.52003,-33.40927],[-70.51933,-33.40916],[-70.51889,-33.40902],[-70.51827,-33.40876],[-70.51604,-33.40759],[-70.51509,-33.40717],[-70.51496,-33.40707],[-70.51418,-33.40666],[-70.51353,-33.40618],[-70.51309,-33.40581],[-70.5119,-33.40463],[-70.51148,-33.40427],[-70.51104,-33.40409],[-70.50865,-33.40271],[-70.50824,-33.40261],[-70.50703,-33.40253],[-70.50668,-33.40265],[-70.50618,-33.40272],[-70.50568,-33.40265],[-70.50523,-33.40246],[-70.50488,-33.40216],[-70.50465,-33.40178],[-70.50457,-33.40137],[-70.50465,-33.40095],[-70.50479,-33.40058],[-70.50501,-33.39915],[-70.50524,-33.39878],[-70.50559,-33.39848],[-70.50605,-33.39829],[-70.50731,-33.39811],[-70.50931,-33.39806],[-70.50995,-33.3981],[-70.51049,-33.39818],[-70.51381,-33.39897],[-70.51459,-33.39931],[-70.51735,-33.39949],[-70.51771,-33.39954],[-70.51962,-33.39963],[-70.52028,-33.39957],[-70.52099,-33.39957],[-70.52176,-33.39954],[-70.52874,-33.39876],[-70.52934,-33.39872],[-70.53023,-33.39874],[-70.53156,-33.39892],[-70.5323,-33.39907],[-70.53292,-33.39927],[-70.53456,-33.39999],[-70.53597,-33.40093],[-70.53638,-33.40115],[-70.53728,-33.40175],[-70.53771,-33.40199],[-70.53927,-33.40253],[-70.54035,-33.40282],[-70.54374,-33.40344],[-70.54445,-33.40364],[-70.54535,-33.40402],[-70.54606,-33.40462],[-70.54652,-33.40537],[-70.54668,-33.4062]]]},"amarilla":{"type":"Polygon","coordinates":[[[-70.54934,-33.40585],[-70.54937,-33.4062],[-70.54934,-33.40655],[-70.54908,-33.40773],[-70.54846,-33.40881],[-70.54824,-33.40911],[-70.54725,-33.40997],[-70.54693,-33.4102],[-70.54528,-33.41091],[-70.54357,-33.41114],[-70.54312,-33.41131],[-70.54275,-33.4114],[-70.54219,-33.41144],[-70.52773,-33.41122],[-70.52732,-33.41167],[-70.52647,-33.41234],[-70.52544,-33.41281],[-70.52505,-33.41295],[-70.52389,-33.41313],[-70.52305,-33.41313],[-70.52189,-33.41295],[-70.52083,-33.41253],[-70.5203,-33.41223],[-70.51959,-33.41172],[-70.51899,-33.41139],[-70.51795,-33.41113],[-70.51705,-33.41076],[-70.51466,-33.40952],[-70.5135,-33.40899],[-70.5124,-33.40835],[-70.51163,-33.40777],[-70.51103,-33.40726],[-70.50987,-33.40611],[-70.50758,-33.40483],[-70.50618,-33.40496],[-70.50526,-33.40487],[-70.50446,-33.40465],[-70.50365,-33.40428],[-70.50333,-33.40405],[-70.5027,-33.40348],[-70.50225,-33.4028],[-70.50209,-33.40248],[-70.50199,-33.40214],[-70.50188,-33.40137],[-70.50191,-33.40102],[-70.50214,-33.40013],[-70.50227,-33.39922],[-70.50245,-33.39846],[-70.50261,-33.39813],[-70.50306,-33.39746],[-70.50333,-33.39719],[-70.50401,-33.39666],[-70.50482,-33.39628],[-70.50557,-33.39607],[-70.50723,-33.39586],[-70.50922,-33.39581],[-70.51019,-33.39586],[-70.51124,-33.39602],[-70.51456,-33.39681],[-70.51538,-33.39711],[-70.51953,-33.39738],[-70.52151,-33.3973],[-70.52853,-33.39652],[-70.52944,-33.39647],[-70.53063,-33.39652],[-70.53223,-33.39674],[-70.53325,-33.39697],[-70.53414,-33.39726],[-70.53597,-33.39807],[-70.53893,-33.39996],[-70.5402,-33.40042],[-70.54105,-33.40064],[-70.54459,-33.40131],[-70.54567,-33.40163],[-70.54657,-33.40202],[-70.54725,-33.40243],[-70.54797,-33.40303],[-70.54824,-33.40329],[-70.54846,-33.4036],[-70.54908,-33.40467],[-70.54934,-33.40585]]]},"precaucion":{"type":"Polygon","coordinates":[[[-70.56424,-33.4174],[-70.55423,-33.41908],[-70.55331,-33.41913],[-70.5516,-33.41896],[-70.54911,-33.41856],[-70.53904,-33.41725],[-70.53647,-33.41702],[-70.53386,-33.41698],[-70.53365,-33.41693],[-70.53331,-33.41673],[-70.53308,-33.41643],[-70.533,-33.41609],[-70.53337,-33.41461],[-70.53546,-33.40922],[-70.53729,-33.4047],[-70.53737,-33.40454],[-70.53765,-33.40427],[-70.53803,-33.40412],[-70.53845,-33.40409],[-70.53884,-33.40421],[-70.53916,-33.40444],[-70.53935,-33.40475],[-70.53937,-33.4051],[-70.5375,-33.40978],[-70.53541,-33.41521],[-70.53661,-33.41523],[-70.53932,-33.41547],[-70.54945,-33.41679],[-70.55196,-33.41718],[-70.55347,-33.41734],[-70.55383,-33.41732],[-70.56395,-33.41562],[-70.5647,-33.41564],[-70.56523,-33.41579],[-70.56556,-33.41601],[-70.56576,-33.41632],[-70.5658,-33.41667],[-70.56568,-33.41701],[-70.56556,-33.41715],[-70.56524,-33.41738],[-70.56504,-33.41744],[-70.56462,-33.41748],[-70.56424,-33.4174]]]},"cauce":{"type":"Polygon","coordinates":[[[-70.51732,-33.40338],[-70.51711,-33.40338],[-70.5161,-33.40316],[-70.51568,-33.40311],[-70.51509,-33.40309],[-70.51356,-33.40322],[-70.51501,-33.40457],[-70.51563,-33.40499],[-70.51643,-33.40537],[-70.51656,-33.40546],[-70.51751,-33.40584],[-70.51975,-33.40692],[-70.52012,-33.40702],[-70.52091,-33.40713],[-70.52158,-33.40739],[-70.52283,-33.40802],[-70.5238,-33.40867],[-70.52388,-33.40879],[-70.5239,-33.40893],[-70.52381,-33.40912],[-70.52368,-33.40921],[-70.52352,-33.40926],[-70.52327,-33.40922],[-70.52236,-33.40862],[-70.52116,-33.40802],[-70.52061,-33.40781],[-70.51989,-33.40771],[-70.51936,-33.40756],[-70.51709,-33.40647],[-70.51606,-33.40606],[-70.51595,-33.40597],[-70.51511,-33.40557],[-70.51439,-33.40507],[-70.51291,-33.4037],[-70.51269,-33.40355],[-70.51262,-33.40342],[-70.51261,-33.40328],[-70.51237,-33.40325],[-70.51191,-33.40312],[-70.50934,-33.40176],[-70.50896,-33.40164],[-70.50842,-33.40156],[-70.50701,-33.40152],[-70.50674,-33.40156],[-70.50627,-33.40172],[-70.50611,-33.40172],[-70.50595,-33.40167],[-70.50579,-33.40151],[-70.50575,-33.40137],[-70.50595,-33.40078],[-70.50613,-33.39946],[-70.50621,-33.39934],[-70.50641,-33.39923],[-70.50725,-33.39913],[-70.50931,-33.39914],[-70.51001,-33.39922],[-70.51336,-33.40015],[-70.51359,-33.40024],[-70.51409,-33.40055],[-70.5174,-33.40088],[-70.51767,-33.40093],[-70.51963,-33.4011],[-70.5203,-33.40105],[-70.521,-33.40109],[-70.52174,-33.40108],[-70.52873,-33.40054],[-70.52938,-33.40052],[-70.53027,-33.40058],[-70.53083,-33.40067],[-70.53164,-33.40087],[-70.53229,-33.40111],[-70.53291,-33.4014],[-70.53323,-33.40158],[-70.53458,-33.40255],[-70.53499,-33.4028],[-70.53586,-33.40341],[-70.53689,-33.40396],[-70.5385,-33.40459],[-70.53954,-33.4049],[-70.54286,-33.40563],[-70.5436,-33.40587],[-70.54374,-33.40594],[-70.54384,-33.40605],[-70.54387,-33.40626],[-70.54381,-33.40639],[-70.5437,-33.40649],[-70.54354,-33.40655],[-70.54338,-33.40656],[-70.54262,-33.40632],[-70.5393,-33.40559],[-70.53815,-33.40524],[-70.53649,-33.4046],[-70.53576,-33.40424],[-70.53531,-33.40397],[-70.53445,-33.40335],[-70.53403,-33.4031],[-70.53268,-33.40213],[-70.53245,-33.402],[-70.53189,-33.40175],[-70.53132,-33.40154],[-70.53064,-33.40137],[-70.53018,-33.4013],[-70.52933,-33.40124],[-70.52877,-33.40126],[-70.5218,-33.4018],[-70.521,-33.40181],[-70.52028,-33.40177],[-70.51958,-33.40181],[-70.51756,-33.40165],[-70.51727,-33.40159],[-70.51394,-33.40126],[-70.51359,-33.40116],[-70.51305,-33.40082],[-70.50985,-33.39993],[-70.50927,-33.39986],[-70.50734,-33.39984],[-70.50694,-33.39989],[-70.50681,-33.40082],[-70.507,-33.4008],[-70.50848,-33.40084],[-70.50931,-33.40096],[-70.50965,-33.40108],[-70.51005,-33.40128],[-70.51232,-33.40248],[-70.51263,-33.40255],[-70.51503,-33.40238],[-70.51574,-33.40239],[-70.5163,-33.40246],[-70.5172,-33.40265],[-70.51741,-33.40265],[-70.51943,-33.40307],[-70.52427,-33.40275],[-70.52443,-33.4028],[-70.52456,-33.40289],[-70.52465,-33.40308],[-70.52463,-33.40322],[-70.52455,-33.40334],[-70.52441,-33.40343],[-70.52425,-33.40347],[-70.51945,-33.40379],[-70.51909,-33.40376],[-70.51732,-33.40338]]]}};
+// Destinos seguros precalculados: [lat, lon, cota m, nombre, tipo, generado(1)/recinto OSM(0)]
+const ALUVION_DESTINOS=[[-33.42173,-70.55891,672,"Colegio Tecnico Hoteleria y Gastronomia Achiga Comeduc","Colegio",0],[-33.41249,-70.55949,691,"Del Carmen College","Colegio",0],[-33.4058,-70.56112,700,"Colegio Nuestra Señora del Rosario Las Condes","Colegio",0],[-33.38823,-70.5328,768,"Colegio San Miguel Arcángel","Colegio",0],[-33.39832,-70.54473,732,"Colegio The Casbor School","Colegio",0],[-33.38888,-70.55042,730,"Piscina Municipal Vitacura","Recinto deportivo",0],[-33.3922,-70.56252,709,"Mi Fitness","Recinto deportivo",0],[-33.40493,-70.56922,688,"E Fitness","Recinto deportivo",0],[-33.40411,-70.56583,696,"Pilates Fit","Recinto deportivo",0],[-33.42363,-70.53881,710,"Quick Fit","Recinto deportivo",0],[-33.39391,-70.5611,709,"Vita Wellness","Recinto deportivo",0],[-33.39656,-70.53499,827,"Parque Cerro Calán","Parque",0],[-33.39034,-70.55113,728,"Colegio Instituto Tabancura Sede Las condes / Vitacura","Colegio",0],[-33.39925,-70.55983,707,"Colegio Emus","Colegio",0],[-33.39568,-70.55362,721,"Escuela Alexander Montessori","Colegio",0],[-33.42223,-70.53178,721,"Escuela Especial Nido de Palabras","Colegio",0],[-33.40621,-70.55867,701,"Escuela Básica Las Carmelitas De Las Condes","Colegio",0],[-33.40381,-70.55361,711,"Jardin infantil Pumanque","Colegio",0],[-33.38936,-70.52575,800,"Escuela Waldorf Gabriela Mistral","Colegio",0],[-33.4072,-70.57025,683,"Ragni Climbing","Recinto deportivo",0],[-33.39346,-70.50741,911,"Plaza Cumbres de San Juan","Parque",0],[-33.4049,-70.55728,705,"Plaza Durand","Parque",0],[-33.40823,-70.55628,702,"Plaza Monseñor Larraín","Parque",0],[-33.40092,-70.55482,715,"Plaza Valenzuela Llanos","Parque",0],[-33.40893,-70.55234,704,"Plaza Martin Luther King","Parque",0],[-33.41397,-70.5586,688,"Plaza Monroe","Parque",0],[-33.39778,-70.54832,729,"Estadio Israelita","Recinto deportivo",0],[-33.40132,-70.55032,719,"Plaza Renacimiento","Parque",0],[-33.38502,-70.54677,740,"Plaza Copahue","Parque",0],[-33.39182,-70.55743,718,"Plaza Honduras","Parque",0],[-33.39113,-70.55814,717,"Plaza Boston","Parque",0],[-33.39046,-70.55847,716,"Plaza Virginia","Parque",0],[-33.39089,-70.5559,719,"Plaza Guatemala","Parque",0],[-33.39046,-70.56245,712,"Plaza Conan Doyle","Parque",0],[-33.38973,-70.56114,714,"Plaza Arturo Prat","Parque",0],[-33.38541,-70.55169,733,"Club Sirio Unido","Recinto deportivo",0],[-33.39448,-70.55082,727,"","Parque",0],[-33.39593,-70.50072,961,"Claro Arena","Estadio",0],[-33.39223,-70.51018,886,"Plaza Camino Catedral","Parque",0],[-33.39102,-70.51301,869,"Plaza del Corazón","Parque",0],[-33.4003,-70.56792,693,"Parque Juan Pablo II","Parque",0],[-33.39743,-70.56698,699,"Parque Brasilia","Parque",0],[-33.38785,-70.50508,894,"","Parque",0],[-33.38964,-70.50766,891,"Plaza El Convento/Los Monjes","Parque",0],[-33.4033,-70.55114,715,"","Parque",0],[-33.39469,-70.54123,742,"Plaza Arequipa","Parque",0],[-33.39223,-70.5401,748,"Plaza Presidente Sanfuentes","Parque",0],[-33.39873,-70.56209,704,"","Parque",0],[-33.39671,-70.55593,714,"Plaza Vicente Montero","Parque",0],[-33.40255,-70.56234,702,"Plaza Los Militares","Parque",0],[-33.41566,-70.55189,690,"Plaza Pedro Lagos","Parque",0],[-33.3987,-70.5535,717,"Plaza Asunción","Parque",0],[-33.40109,-70.55339,715,"Plaza Leonardo DaVinci","Parque",0],[-33.42267,-70.55297,676,"Plaza Filipinas","Parque",0],[-33.4212,-70.55087,678,"Plaza Tezcuco","Parque",0],[-33.41951,-70.54831,686,"","Parque",0],[-33.41869,-70.54542,691,"Plaza Toconao","Parque",0],[-33.41963,-70.54483,692,"","Parque",0],[-33.42024,-70.54542,690,"","Parque",0],[-33.42179,-70.54539,690,"Plaza Codpa","Parque",0],[-33.42,-70.54364,694,"","Parque",0],[-33.41971,-70.54239,697,"Plaza Matilla","Parque",0],[-33.42011,-70.54115,698,"Plaza Ayquina","Parque",0],[-33.42353,-70.54682,686,"Plaza Aucanquilcha","Parque",0],[-33.38642,-70.54785,738,"Plaza Tampa","Parque",0],[-33.42629,-70.54634,686,"","Parque",0],[-33.41452,-70.55733,689,"","Parque",0],[-33.41327,-70.56131,687,"","Parque",0],[-33.42728,-70.54308,697,"","Parque",0],[-33.39016,-70.55624,720,"Plaza Costa Rica","Parque",0],[-33.39024,-70.50395,915,"Plaza San Miguel","Parque",0],[-33.41877,-70.54423,692,"","Parque",0],[-33.41777,-70.54239,698,"","Parque",0],[-33.41797,-70.54365,695,"","Parque",0],[-33.41867,-70.54129,699,"Plaza Visviri","Parque",0],[-33.41889,-70.54312,695,"","Parque",0],[-33.42153,-70.54419,691,"","Parque",0],[-33.42145,-70.54236,696,"","Parque",0],[-33.42162,-70.54111,698,"","Parque",0],[-33.42314,-70.54231,696,"Plaza Pica","Parque",0],[-33.42334,-70.5411,697,"","Parque",0],[-33.42336,-70.54415,692,"Plaza Parinacota","Parque",0],[-33.42644,-70.5338,723,"","Parque",0],[-33.42644,-70.53286,727,"","Parque",0],[-33.42638,-70.53132,734,"","Parque",0],[-33.41829,-70.53577,713,"","Parque",0],[-33.39333,-70.50487,924,"Colegio San Nicolás de Myra","Colegio",0],[-33.39145,-70.50893,891,"Colegio Francisco De Asís","Colegio",0],[-33.40943,-70.56588,687,"Colegio Compañía de María Apoquindo","Colegio",0],[-33.42011,-70.53431,712,"Estadio Municipal Patricia","Cancha",0],[-33.42567,-70.5365,711,"Plaza Via Láctea","Parque",0],[-33.39803,-70.49974,975,"Canchas Entrenamiento Universidad Católica","Cancha",0],[-33.3991,-70.4997,976,"Canchas Entrenamiento Universidad Católica","Cancha",0],[-33.39801,-70.50184,958,"Cancha de Rugby UC","Cancha",0],[-33.39953,-70.50045,972,"Canchas Entrenamiento Universidad Católica","Cancha",0],[-33.38727,-70.54009,754,"Canchas Estadio Palestino","Cancha",0],[-33.39577,-70.49709,971,"Court Central Jaime Fillol","Cancha",0],[-33.39853,-70.49849,979,"Futbolito San Carlos de Apoquindo","Cancha",0],[-33.3993,-70.49842,983,"Futbolito San Carlos de Apoquindo","Cancha",0],[-33.3923,-70.53442,763,"Estadio Carabineros de Chile","Cancha",0],[-33.41822,-70.53941,706,"Parque Santa Rosa de Apoquindo","Parque",0],[-33.41029,-70.55041,703,"Colegio del Sagrado Corazón de Apoquindo","Colegio",0],[-33.41565,-70.56336,680,"Colegio San Juan Evangelista","Colegio",0],[-33.39422,-70.50204,945,"Fútbol Colegio Cumbres","Cancha",0],[-33.39333,-70.50358,928,"Cancha Colegio Cumbres","Cancha",0],[-33.39564,-70.50318,944,"Fútbol Colegio Cumbres","Cancha",0],[-33.3949,-70.5026,939,"Fútbol Colegio Cumbres","Cancha",0],[-33.39777,-70.49754,985,"Jardín de Saltos Américo Simonetti","Cancha",0],[-33.39739,-70.49634,987,"Cancha de Equitación","Cancha",0],[-33.38904,-70.53324,767,"Colegio San Miguel Arcángel","Colegio",0],[-33.40272,-70.5648,696,"Colegio International San Estanislao Kostka Chile","Colegio",0],[-33.40659,-70.55388,707,"Colegio Seminario Pontificio Menor","Colegio",0],[-33.41345,-70.51112,861,"Colegio Padre Hurtado Y Juanita De Los Andes","Colegio",0],[-33.39019,-70.55441,723,"Centro Deportivo El Dorado","Recinto deportivo",0],[-33.3854,-70.55341,730,"Plaza República de Siria","Parque",0],[-33.38945,-70.55349,726,"Plaza Nicaragua","Parque",0],[-33.38702,-70.55717,722,"Estadio Croata","Cancha",0],[-33.4219,-70.53559,712,"","Parque",0],[-33.40053,-70.56601,695,"Colegio Árabe","Colegio",0],[-33.40801,-70.56025,696,"Palestra Gimnasia","Recinto deportivo",0],[-33.41201,-70.50782,890,"Parque Carlos Peña Otaegui","Parque",0],[-33.4009,-70.56468,697,"Colegio Leonardo Da Vinci","Colegio",0],[-33.38596,-70.55468,728,"Plaza Monte Olimpo","Parque",0],[-33.41784,-70.52164,890,"Plaza La Península","Parque",0],[-33.42119,-70.55415,677,"Plaza Río de la Plata","Parque",0],[-33.40162,-70.56027,705,"Plaza 19 de Junio","Parque",0],[-33.42027,-70.53519,710,"Plaza Central","Parque",0],[-33.41598,-70.55523,686,"Plazoleta Sherlock Holmes","Parque",0],[-33.42478,-70.55536,672,"Colegio Institución Teresiana","Colegio",0],[-33.42613,-70.55536,670,"Colegio Alexander Fleming","Colegio",0],[-33.39651,-70.49901,973,"Complejo Deportivo San Carlos de Apoquindo","Recinto deportivo",0],[-33.42376,-70.52774,740,"Multicancha Bosque de la Villa","Cancha",0],[-33.42026,-70.53036,724,"Multicancha Manuel Rodríguez","Cancha",0],[-33.41158,-70.55182,699,"Colegio San Jorge","Colegio",0],[-33.3896,-70.55954,716,"Colegio Antártica Chilena","Colegio",0],[-33.39119,-70.56128,712,"Jardin Infantil","Colegio",0],[-33.42365,-70.5329,721,"","Parque",0],[-33.39516,-70.555,719,"Liceo Rafael Sotomayor","Colegio",0],[-33.42038,-70.53719,708,"","Parque",0],[-33.41169,-70.56676,681,"Pacific Fitness","Recinto deportivo",0],[-33.39823,-70.55999,710,"Colegio Emaus","Colegio",0],[-33.42783,-70.53859,706,"Skatepark Las Condes 2","Cancha",0],[-33.42068,-70.54665,689,"Colegio Alamiro","Colegio",0],[-33.4275,-70.54083,701,"","Parque",0],[-33.39235,-70.55988,713,"Plaza Trinidad y Tobago","Parque",0],[-33.38909,-70.49644,940,"Condominio Cumbre de San Francisco","Parque",0],[-33.38827,-70.4957,947,"Condominio Cumbre Provincia","Parque",0],[-33.39077,-70.54948,734,"","Parque",0],[-33.40862,-70.51145,873,"","Parque",0],[-33.39435,-70.55542,718,"Centro deportivo Rolf Nathan","Recinto deportivo",0],[-33.39779,-70.55902,709,"Mar del Coral","Parque",0],[-33.39294,-70.55205,725,"","Parque",0],[-33.39389,-70.5517,725,"","Parque",0],[-33.4248,-70.52926,737,"Multicancha Centro Comunitario Las Condesas","Cancha",0],[-33.42555,-70.53327,725,"Multicancha Santa Zita","Cancha",0],[-33.40575,-70.56259,698,"Plaza Gustavo V","Parque",0],[-33.4264,-70.536,713,"","Parque",0],[-33.40872,-70.55998,702,"Multicancha","Recinto deportivo",0],[-33.42028,-70.53614,708,"Liceo Juan Pablo Ii De Las Condes","Colegio",0],[-33.41938,-70.53319,717,"","Parque",0],[-33.38818,-70.53794,756,"Plaza del reloj","Parque",0],[-33.39018,-70.53639,757,"","Parque",0],[-33.38597,-70.53836,755,"Parque Estoril","Parque",0],[-33.39719,-70.53688,843,"","Parque",0],[-33.38841,-70.51377,855,"Plaza Francisco Bulnes Correa","Parque",0],[-33.42649,-70.5482,683,"","Parque",0],[-33.38631,-70.52648,784,"Plaza Lo Fontecilla","Parque",0],[-33.3943,-70.52135,829,"Colegio William Kilpatrick","Colegio",0],[-33.4147,-70.54217,700,"","Parque",0],[-33.4157,-70.54221,699,"","Parque",0],[-33.41361,-70.54201,701,"","Parque",0],[-33.40641,-70.56636,694,"","Parque",0],[-33.42438,-70.54593,689,"","Parque",0],[-33.42424,-70.54702,687,"Plaza María Luisa Bombal","Parque",0],[-33.40541,-70.55057,712,"","Parque",0],[-33.39682,-70.55711,713,"","Parque",0],[-33.41204,-70.53997,710,"","Parque",0],[-33.4123,-70.54145,706,"","Parque",0],[-33.38854,-70.5581,719,"","Parque",0],[-33.38618,-70.50852,869,"","Parque",0],[-33.40904,-70.56452,691,"Life Support","Colegio",0],[-33.42458,-70.51996,886,"","Parque",0],[-33.40826,-70.50109,973,"Plaza Pumptrack","Cancha",0],[-33.39819,-70.4965,995,"Cancha de Equitación Félix Halcartegaray Reyes","Cancha",0],[-33.39311,-70.50103,940,"","Parque",0],[-33.402,-70.56535,695,"","Parque",0],[-33.42523,-70.53176,729,"Liceo Santa Maria De Las Condes","Colegio",0],[-33.38937,-70.53108,770,"Colegio British High","Colegio",0],[-33.41342,-70.55959,688,"Colegio Ciudadela Montessori Las Condes","Colegio",0],[-33.39439,-70.55332,725,"","Parque",0],[-33.42317,-70.5292,731,"","Parque",0],[-33.4239,-70.52676,741,"","Parque",0],[-33.41446,-70.56548,679,"Bandejon Central Manquehue","Parque",0],[-33.41946,-70.56435,675,"Bandejon Central Manquehue","Parque",0],[-33.42036,-70.56436,672,"Bandejon Central Manquehue","Parque",0],[-33.41786,-70.56455,678,"Bandejon Central Manquehue","Parque",0],[-33.40119,-70.55947,706,"Plaza Raimundo Fuenzalida","Parque",0],[-33.39604,-70.56747,698,"Parque Cuauhtémoc","Parque",0],[-33.40705,-70.55033,710,"Punto seguro en Zanzíbar Poniente","Punto de encuentro sugerido",1],[-33.40829,-70.54995,708,"Punto seguro en Avenida Apoquindo","Punto de encuentro sugerido",1],[-33.41236,-70.53416,738,"Punto seguro en Río Guadiana","Punto de encuentro sugerido",1],[-33.41223,-70.53255,742,"Punto seguro en La Escuela","Punto de encuentro sugerido",1],[-33.41199,-70.53046,770,"Punto seguro en Vital Apoquindo","Punto de encuentro sugerido",1],[-33.41229,-70.52934,785,"Punto seguro en Colina Miravalle","Punto de encuentro sugerido",1],[-33.41255,-70.52781,797,"Punto seguro en Colina Miravalle","Punto de encuentro sugerido",1],[-33.41365,-70.5264,794,"Punto seguro en Carlos Peña Otaegui","Punto de encuentro sugerido",1],[-33.41241,-70.51905,846,"Punto seguro en Atalaya","Punto de encuentro sugerido",1],[-33.41207,-70.51765,849,"Punto seguro en Carlos Peña Otaegui","Punto de encuentro sugerido",1],[-33.41134,-70.51571,845,"Punto seguro en Camino Otoñal","Punto de encuentro sugerido",1],[-33.4107,-70.51481,849,"Punto seguro en La Quincha","Punto de encuentro sugerido",1],[-33.40823,-70.51021,882,"Punto seguro en Avenida San Ramón","Punto de encuentro sugerido",1],[-33.40651,-70.50864,900,"Punto seguro en Santos Apostoles","Punto de encuentro sugerido",1],[-33.40589,-70.50763,910,"Punto seguro en Universidad de Los Andes","Punto de encuentro sugerido",1],[-33.39513,-70.50578,929,"Punto seguro en Avenida La Plaza","Punto de encuentro sugerido",1],[-33.3949,-70.50906,905,"Punto seguro en Avenida San Carlos de Apoquindo","Punto de encuentro sugerido",1],[-33.39612,-70.51535,866,"Punto seguro en Camino del Manzanar","Punto de encuentro sugerido",1],[-33.3963,-70.51718,855,"Punto seguro en Avenida Francisco Bulnes Correa","Punto de encuentro sugerido",1],[-33.39597,-70.52545,808,"Punto seguro en Camino Piedra Roja","Punto de encuentro sugerido",1],[-33.39562,-70.52849,793,"Punto seguro en Camino Mirasol","Punto de encuentro sugerido",1],[-33.3957,-70.53134,786,"Punto seguro en Camino del Algarrobo","Punto de encuentro sugerido",1],[-33.39596,-70.53287,797,"Punto seguro en Camino Olivar","Punto de encuentro sugerido",1],[-33.39965,-70.54119,732,"Punto seguro en Pasaje Cardenal Newman","Punto de encuentro sugerido",1],[-33.40008,-70.54335,727,"Punto seguro en Oxford","Punto de encuentro sugerido",1],[-33.40036,-70.54451,727,"Punto seguro en Avenida Padre Hurtado Central","Punto de encuentro sugerido",1],[-33.40157,-70.54755,722,"Punto seguro en Dublín","Punto de encuentro sugerido",1]];
+// Puntos sobre calles residenciales del sector (para 🎲 y solicitudes SOS de ejemplo): [lat, lon]
+const ALUVION_CALLES=[[-33.42211,-70.55993],[-33.42238,-70.55937],[-33.42243,-70.55924],[-33.42251,-70.55839],[-33.42498,-70.55995],[-33.425,-70.55772],[-33.42146,-70.55819],[-33.42023,-70.55793],[-33.4197,-70.55782],[-33.42457,-70.55921],[-33.42418,-70.55656],[-33.42407,-70.55571],[-33.42403,-70.55506],[-33.42415,-70.55394],[-33.42212,-70.55422],[-33.42196,-70.5552],[-33.42171,-70.55667],[-33.42158,-70.5575],[-33.42036,-70.5534],[-33.42025,-70.55408],[-33.42004,-70.55533],[-33.41976,-70.55696],[-33.41946,-70.55875],[-33.41927,-70.55987],[-33.41801,-70.55568],[-33.41888,-70.55588],[-33.42105,-70.5564],[-33.42118,-70.55937],[-33.42401,-70.55932],[-33.4225,-70.55996],[-33.42244,-70.55688],[-33.42368,-70.55791],[-33.42481,-70.55658],[-33.42497,-70.54955],[-33.42483,-70.54823],[-33.42463,-70.54641],[-33.42462,-70.54629],[-33.41832,-70.55374],[-33.41913,-70.5539],[-33.41895,-70.55287],[-33.41877,-70.55285],[-33.42101,-70.54511],[-33.42009,-70.54513],[-33.41945,-70.54514],[-33.4184,-70.54515],[-33.41739,-70.54516],[-33.42469,-70.55172],[-33.42446,-70.54963],[-33.42379,-70.5521],[-33.4237,-70.55131],[-33.42358,-70.55029],[-33.42346,-70.54954],[-33.42328,-70.54924],[-33.42419,-70.54836],[-33.42293,-70.54961],[-33.42239,-70.5502],[-33.42353,-70.54627],[-33.42292,-70.54627],[-33.42172,-70.54629],[-33.4212,-70.5463],[-33.41959,-70.54631],[-33.4187,-70.54633],[-33.41754,-70.54635],[-33.41999,-70.54728],[-33.42112,-70.54708],[-33.4217,-70.54637],[-33.42249,-70.54636],[-33.42352,-70.54635],[-33.4228,-70.54507],[-33.42265,-70.54388],[-33.4225,-70.54264],[-33.42238,-70.54162],[-33.4222,-70.5402],[-33.41952,-70.54573],[-33.4215,-70.54449],[-33.42086,-70.5439],[-33.41929,-70.54395],[-33.41873,-70.54395],[-33.42289,-70.54139],[-33.42334,-70.54506],[-33.42,-70.5433],[-33.41707,-70.54335],[-33.42446,-70.54001],[-33.42459,-70.54121],[-33.42478,-70.54314],[-33.42116,-70.54768],[-33.42131,-70.54854],[-33.42154,-70.54895],[-33.42221,-70.55103],[-33.42231,-70.55191],[-33.42084,-70.54084],[-33.42082,-70.54205],[-33.41973,-70.55115],[-33.41957,-70.55131],[-33.4215,-70.55036],[-33.42111,-70.55077],[-33.41983,-70.5521],[-33.41937,-70.55454],[-33.41867,-70.55435],[-33.42448,-70.54504],[-33.42422,-70.54261],[-33.42416,-70.54199],[-33.42412,-70.54168],[-33.42045,-70.54934],[-33.42004,-70.54976],[-33.41957,-70.55024],[-33.42076,-70.55487],[-33.42246,-70.5554],[-33.42304,-70.55368],[-33.42082,-70.55329],[-33.42086,-70.55286],[-33.42437,-70.55181],[-33.42324,-70.55234],[-33.42327,-70.55176],[-33.42325,-70.55424],[-33.42123,-70.55575],[-33.42224,-70.55353],[-33.42426,-70.55389],[-33.42222,-70.54751],[-33.4242,-70.54322],[-33.415,-70.55941],[-33.41521,-70.55829],[-33.41518,-70.55811],[-33.41732,-70.55927],[-33.41601,-70.55896],[-33.4148,-70.55717],[-33.41549,-70.55729],[-33.41627,-70.55706],[-33.41396,-70.55831],[-33.41846,-70.55879],[-33.41612,-70.55997],[-33.41591,-70.55987],[-33.41973,-70.55989],[-33.41408,-70.55894],[-33.41864,-70.55759],[-33.41775,-70.55737],[-33.40754,-70.55846],[-33.40682,-70.55808],[-33.40619,-70.55774],[-33.40529,-70.55725],[-33.40629,-70.55996],[-33.40719,-70.55955],[-33.41621,-70.55764],[-33.4165,-70.55601],[-33.41669,-70.5548],[-33.41458,-70.55998],[-33.40961,-70.55976],[-33.40968,-70.55938],[-33.40982,-70.55891],[-33.4101,-70.55809],[-33.4104,-70.55722],[-33.41194,-70.5579],[-33.41209,-70.55694],[-33.41222,-70.55616],[-33.41244,-70.55479],[-33.4125,-70.55438],[-33.41341,-70.55591],[-33.41338,-70.55683],[-33.41046,-70.55341],[-33.41027,-70.55415],[-33.41004,-70.55511],[-33.40964,-70.5567],[-33.40969,-70.55227],[-33.40949,-70.55309],[-33.40918,-70.55437],[-33.40897,-70.55525],[-33.40874,-70.55619],[-33.40873,-70.55623],[-33.40743,-70.55526],[-33.40717,-70.55645],[-33.4071,-70.55668],[-33.40681,-70.55595],[-33.41401,-70.55698],[-33.41716,-70.55612],[-33.41461,-70.55573],[-33.41472,-70.55508],[-33.41495,-70.55368],[-33.41509,-70.55281],[-33.41309,-70.5576],[-33.41092,-70.55433],[-33.41095,-70.55661],[-33.41604,-70.55546],[-33.41306,-70.55955],[-33.41335,-70.55858],[-33.41127,-70.55866],[-33.41153,-70.55997],[-33.41069,-70.55954],[-33.40883,-70.55839],[-33.40837,-70.55841],[-33.41141,-70.55764],[-33.41205,-70.55972],[-33.41748,-70.55346],[-33.41703,-70.55411],[-33.41715,-70.55014],[-33.41693,-70.55018],[-33.41627,-70.55237],[-33.41589,-70.55192],[-33.41549,-70.55148],[-33.41507,-70.55103],[-33.41465,-70.55056],[-33.41429,-70.55018],[-33.41388,-70.55158],[-33.4138,-70.55186],[-33.41717,-70.55222],[-33.41696,-70.55293],[-33.41558,-70.55292],[-33.41536,-70.55426],[-33.41424,-70.55503],[-33.41861,-70.5509],[-33.41477,-70.5496],[-33.41686,-70.54788],[-33.41588,-70.54893],[-33.4167,-70.54662],[-33.41599,-70.54695],[-33.41554,-70.54742],[-33.41504,-70.5461],[-33.41511,-70.54799],[-33.414,-70.54678],[-33.41923,-70.54808],[-33.4193,-70.54863],[-33.41778,-70.54891],[-33.4183,-70.54881],[-33.41768,-70.54834],[-33.41874,-70.54814],[-33.41847,-70.54578],[-33.41738,-70.54577],[-33.41658,-70.54531],[-33.41604,-70.5453],[-33.41581,-70.54517],[-33.41508,-70.5444],[-33.4147,-70.54398],[-33.41417,-70.54341],[-33.41971,-70.54799],[-33.41644,-70.54463],[-33.41692,-70.54336],[-33.41127,-70.54143],[-33.4115,-70.54231],[-33.41175,-70.5432],[-33.41256,-70.54432],[-33.41345,-70.54528],[-33.40737,-70.54946],[-33.40734,-70.54975],[-33.40707,-70.55013],[-33.40605,-70.54983],[-33.40549,-70.54959],[-33.40524,-70.54947],[-33.40734,-70.54825],[-33.40725,-70.54724],[-33.40698,-70.54708],[-33.40616,-70.54688],[-33.40526,-70.54626],[-33.40436,-70.5451],[-33.40531,-70.54549],[-33.40591,-70.54511],[-33.40622,-70.54522],[-33.40711,-70.54582],[-33.41727,-70.551],[-33.41697,-70.5487],[-33.41696,-70.55104],[-33.41601,-70.55004],[-33.41316,-70.55158],[-33.4161,-70.54392],[-33.41318,-70.54775],[-33.41247,-70.5487],[-33.41548,-70.54294],[-33.41315,-70.55065],[-33.41159,-70.54899],[-33.40982,-70.54425],[-33.40997,-70.54405],[-33.41117,-70.54349],[-33.41299,-70.54278],[-33.41384,-70.54245],[-33.41191,-70.54639],[-33.4112,-70.54733],[-33.41102,-70.54756],[-33.41059,-70.54796],[-33.40972,-70.54833],[-33.40886,-70.54842],[-33.41049,-70.5422],[-33.41035,-70.54188],[-33.41914,-70.54271],[-33.419,-70.54164],[-33.41887,-70.54056],[-33.41799,-70.55036],[-33.41427,-70.54911],[-33.41666,-70.54135],[-33.41578,-70.54164],[-33.4152,-70.54195],[-33.41273,-70.54736],[-33.41639,-70.54288],[-33.40828,-70.54986],[-33.40914,-70.54978],[-33.41039,-70.54966],[-33.41073,-70.54962],[-33.40706,-70.5493],[-33.40701,-70.54847],[-33.40502,-70.5451],[-33.4046,-70.54403],[-33.41338,-70.54346],[-33.41139,-70.54601],[-33.41287,-70.55241],[-33.41382,-70.55399],[-33.40667,-70.55091],[-33.40775,-70.55149],[-33.4185,-70.54209],[-33.40702,-70.55504],[-33.40835,-70.55181],[-33.41213,-70.55236],[-33.41217,-70.55145],[-33.41047,-70.5523],[-33.41088,-70.55228],[-33.40849,-70.55298],[-33.41076,-70.55351],[-33.4098,-70.55141],[-33.41,-70.55143],[-33.40815,-70.5517],[-33.40803,-70.54642],[-33.40938,-70.54381],[-33.41067,-70.54697],[-33.41025,-70.54521],[-33.408,-70.54607],[-33.40897,-70.54571],[-33.41216,-70.54485],[-33.41072,-70.5442],[-33.41178,-70.54534],[-33.41067,-70.5488],[-33.4084,-70.54914],[-33.42074,-70.5378],[-33.42073,-70.53676],[-33.42073,-70.5356],[-33.42072,-70.53461],[-33.42225,-70.54203],[-33.41767,-70.5421],[-33.41992,-70.54085],[-33.41714,-70.5409],[-33.41801,-70.54073],[-33.41986,-70.54036],[-33.42086,-70.54016],[-33.41989,-70.54269],[-33.42029,-70.53784],[-33.42004,-70.53658],[-33.41976,-70.5353],[-33.41952,-70.53419],[-33.42023,-70.53332],[-33.42458,-70.53114],[-33.42458,-70.5306],[-33.42497,-70.52966],[-33.42488,-70.53751],[-33.42489,-70.53715],[-33.42493,-70.53607],[-33.42012,-70.53176],[-33.42012,-70.53085],[-33.42014,-70.52975],[-33.42377,-70.53641],[-33.42377,-70.53626],[-33.42381,-70.53486],[-33.42385,-70.53362],[-33.42388,-70.53274],[-33.42391,-70.53176],[-33.42071,-70.53416],[-33.42,-70.53303],[-33.41964,-70.53261],[-33.42278,-70.53642],[-33.42281,-70.53638],[-33.42281,-70.53501],[-33.42203,-70.52964],[-33.42217,-70.52985],[-33.4224,-70.53012],[-33.42313,-70.53098],[-33.42408,-70.54007],[-33.42397,-70.52979],[-33.42066,-70.53136],[-33.42103,-70.5309],[-33.42272,-70.53779],[-33.42389,-70.53956],[-33.42447,-70.53891],[-33.42224,-70.53645],[-33.42208,-70.53752],[-33.42372,-70.53816],[-33.4208,-70.53889],[-33.42288,-70.54013],[-33.42193,-70.53473],[-33.42192,-70.5342],[-33.42294,-70.53243],[-33.42187,-70.53094],[-33.4244,-70.53233],[-33.42307,-70.53362],[-33.42125,-70.53207],[-33.42444,-70.53315],[-33.42435,-70.53439],[-33.4169,-70.51717],[-33.41603,-70.51725],[-33.41555,-70.51774],[-33.41563,-70.51885],[-33.41615,-70.51935],[-33.41639,-70.51996],[-33.41613,-70.521],[-33.41609,-70.52122],[-33.41634,-70.52303],[-33.41639,-70.5232],[-33.41703,-70.52366],[-33.41792,-70.52376],[-33.41888,-70.52341],[-33.41948,-70.52316],[-33.4198,-70.52307],[-33.42067,-70.52238],[-33.42081,-70.52209],[-33.421,-70.52093],[-33.41923,-70.52014],[-33.41974,-70.52046],[-33.42143,-70.52963],[-33.41892,-70.52962],[-33.41877,-70.52962],[-33.424,-70.52824],[-33.42402,-70.52757],[-33.42403,-70.52619],[-33.42474,-70.52527],[-33.42429,-70.5258],[-33.42319,-70.52964],[-33.41478,-70.53743],[-33.41483,-70.53761],[-33.41509,-70.53863],[-33.41524,-70.53921],[-33.41368,-70.53784],[-33.41403,-70.53921],[-33.41418,-70.53978],[-33.41425,-70.53692],[-33.41528,-70.53775],[-33.41626,-70.53715],[-33.41735,-70.53681],[-33.41764,-70.53821],[-33.41632,-70.53782],[-33.41897,-70.53647],[-33.41924,-70.5378],[-33.41847,-70.53663],[-33.41826,-70.53815],[-33.41879,-70.54146],[-33.41554,-70.53712],[-33.41632,-70.5388],[-33.41676,-70.53265],[-33.41757,-70.53256],[-33.41815,-70.53247],[-33.41461,-70.53451],[-33.41504,-70.53583],[-33.4143,-70.53571],[-33.41555,-70.53489],[-33.41565,-70.53418],[-33.41549,-70.53533],[-33.41674,-70.53395],[-33.41705,-70.53527],[-33.41707,-70.53539],[-33.4162,-70.53567],[-33.41852,-70.53342],[-33.41874,-70.53443],[-33.41881,-70.53474],[-33.42001,-70.53523],[-33.41916,-70.53547],[-33.41734,-70.53378],[-33.41766,-70.5307],[-33.41802,-70.53064],[-33.41842,-70.53151],[-33.41555,-70.53044],[-33.4154,-70.53103],[-33.41509,-70.5314],[-33.41461,-70.53203],[-33.41661,-70.53092],[-33.41776,-70.53162],[-33.41571,-70.53265],[-33.41424,-70.5325],[-33.41379,-70.53483],[-33.41388,-70.53197],[-33.40736,-70.53928],[-33.40712,-70.53842],[-33.40705,-70.53817],[-33.41365,-70.54187],[-33.4134,-70.54148],[-33.4132,-70.54077],[-33.41066,-70.54025],[-33.41031,-70.53913],[-33.4101,-70.53844],[-33.40967,-70.53706],[-33.40947,-70.5364],[-33.40899,-70.53483],[-33.40872,-70.53397],[-33.41328,-70.53149],[-33.41238,-70.53204],[-33.40691,-70.53471],[-33.40732,-70.53454],[-33.41045,-70.53328],[-33.41074,-70.53305],[-33.41156,-70.53198],[-33.41167,-70.53184],[-33.41289,-70.53087],[-33.41372,-70.53064],[-33.41436,-70.5305],[-33.40748,-70.54052],[-33.40563,-70.54117],[-33.41659,-70.53077],[-33.41648,-70.52975],[-33.41754,-70.52961],[-33.41162,-70.54249],[-33.41221,-70.53694],[-33.41263,-70.53678],[-33.41312,-70.53752],[-33.41519,-70.53337],[-33.41425,-70.53327],[-33.41325,-70.53404],[-33.41291,-70.53426],[-33.41244,-70.53402],[-33.41238,-70.53639],[-33.41251,-70.53634],[-33.41145,-70.53083],[-33.41171,-70.53031],[-33.41246,-70.52905],[-33.41253,-70.52893],[-33.4126,-70.52863],[-33.41253,-70.52754],[-33.41264,-70.52649],[-33.4124,-70.52626],[-33.41117,-70.52562],[-33.41096,-70.52539],[-33.41055,-70.52486],[-33.41289,-70.53957],[-33.41619,-70.5348],[-33.40539,-70.54005],[-33.40623,-70.53972],[-33.40642,-70.53964],[-33.40812,-70.53898],[-33.40715,-70.53545],[-33.40661,-70.53414],[-33.40609,-70.53351],[-33.41186,-70.53523],[-33.40748,-70.5332],[-33.40826,-70.53308],[-33.40897,-70.53289],[-33.41004,-70.53244],[-33.41379,-70.52979],[-33.41431,-70.52967],[-33.4156,-70.52957],[-33.40499,-70.53831],[-33.406,-70.53789],[-33.40711,-70.53744],[-33.41327,-70.53237],[-33.40864,-70.53682],[-33.41005,-70.53627],[-33.4108,-70.53599],[-33.40804,-70.53841],[-33.40938,-70.53781],[-33.411,-70.53778],[-33.41124,-70.53872],[-33.41212,-70.53846],[-33.41169,-70.53862],[-33.41167,-70.54126],[-33.41083,-70.54027],[-33.40869,-70.54042],[-33.40919,-70.54022],[-33.40923,-70.53883],[-33.40945,-70.54143],[-33.40962,-70.54205],[-33.41178,-70.54002],[-33.4105,-70.53741],[-33.40886,-70.541],[-33.41087,-70.53726],[-33.41139,-70.53335],[-33.41155,-70.53448],[-33.41016,-70.53523],[-33.40844,-70.53506],[-33.40891,-70.53317],[-33.41452,-70.52699],[-33.41436,-70.52764],[-33.41706,-70.51695],[-33.41859,-70.52059],[-33.41895,-70.52135],[-33.41187,-70.51883],[-33.41152,-70.51876],[-33.41066,-70.51862],[-33.40823,-70.51975],[-33.40757,-70.52023],[-33.40434,-70.52246],[-33.40339,-70.52267],[-33.40216,-70.5229],[-33.40159,-70.52301],[-33.40833,-70.52261],[-33.40489,-70.525],[-33.40434,-70.52536],[-33.40416,-70.52549],[-33.40346,-70.52612],[-33.40312,-70.52651],[-33.4089,-70.52347],[-33.40761,-70.52437],[-33.40637,-70.52523],[-33.40554,-70.52581],[-33.40516,-70.52606],[-33.40436,-70.52663],[-33.40368,-70.52768],[-33.40347,-70.52898],[-33.40448,-70.52892],[-33.40449,-70.52852],[-33.40489,-70.52752],[-33.40592,-70.52676],[-33.40693,-70.52604],[-33.40718,-70.52588],[-33.40807,-70.52587],[-33.40899,-70.52622],[-33.40934,-70.52653],[-33.40801,-70.52477],[-33.40907,-70.52508],[-33.40983,-70.52558],[-33.41046,-70.52658],[-33.4106,-70.52778],[-33.41025,-70.52876],[-33.40968,-70.52923],[-33.40887,-70.52958],[-33.40798,-70.52968],[-33.40688,-70.52939],[-33.40607,-70.52897],[-33.40546,-70.52867],[-33.40632,-70.52771],[-33.40697,-70.52724],[-33.40726,-70.52708],[-33.40801,-70.52698],[-33.41147,-70.52283],[-33.41162,-70.52279],[-33.41211,-70.52336],[-33.41257,-70.52381],[-33.41267,-70.52315],[-33.41213,-70.52201],[-33.41227,-70.52016],[-33.41246,-70.51862],[-33.41254,-70.51797],[-33.41261,-70.51761],[-33.41323,-70.51549],[-33.41239,-70.51754],[-33.41134,-70.51712],[-33.41066,-70.517],[-33.40702,-70.5191],[-33.40439,-70.52085],[-33.40344,-70.52096],[-33.40311,-70.52422],[-33.40358,-70.52426],[-33.40759,-70.52175],[-33.40804,-70.52143],[-33.40925,-70.52081],[-33.41044,-70.52035],[-33.41076,-70.52028],[-33.40726,-70.51753],[-33.40663,-70.51615],[-33.40733,-70.51568],[-33.40963,-70.52766],[-33.40886,-70.52843],[-33.40782,-70.52829],[-33.41351,-70.52847],[-33.41355,-70.52738],[-33.41368,-70.52648],[-33.41215,-70.52448],[-33.41142,-70.52203],[-33.4124,-70.51649],[-33.41256,-70.51598],[-33.41264,-70.51414],[-33.41265,-70.51327],[-33.41856,-70.51988],[-33.41785,-70.51897],[-33.41764,-70.51876],[-33.41639,-70.51591],[-33.41617,-70.5155],[-33.4161,-70.51527],[-33.41594,-70.51426],[-33.41227,-70.51307],[-33.41169,-70.51347],[-33.41158,-70.51354],[-33.40967,-70.51383],[-33.40793,-70.51494],[-33.40594,-70.51622],[-33.40524,-70.51646],[-33.40451,-70.51678],[-33.40414,-70.51696],[-33.40587,-70.51662],[-33.4065,-70.51805],[-33.40725,-70.51958],[-33.40897,-70.52357],[-33.4013,-70.51738],[-33.40173,-70.51736],[-33.40289,-70.51753],[-33.40807,-70.51514],[-33.40985,-70.51406],[-33.41165,-70.51538],[-33.41158,-70.51554],[-33.41008,-70.5158],[-33.40938,-70.51619],[-33.40871,-70.5166],[-33.40575,-70.51852],[-33.40508,-70.51884],[-33.40435,-70.51912],[-33.40343,-70.51936],[-33.40243,-70.51946],[-33.40168,-70.51968],[-33.41253,-70.52469],[-33.41084,-70.51947],[-33.40986,-70.52146],[-33.40976,-70.52138],[-33.4059,-70.55953],[-33.40522,-70.55983],[-33.40278,-70.55924],[-33.40228,-70.55914],[-33.40146,-70.55897],[-33.40559,-70.559],[-33.40637,-70.55858],[-33.40456,-70.55937],[-33.40113,-70.55838],[-33.4007,-70.55856],[-33.40286,-70.55825],[-33.40078,-70.55781],[-33.40473,-70.55754],[-33.40411,-70.5581],[-33.40069,-70.55982],[-33.4026,-70.55998],[-33.40303,-70.55719],[-33.40255,-70.55988],[-33.40141,-70.55982],[-33.40437,-70.55677],[-33.40333,-70.55614],[-33.40535,-70.55708],[-33.40429,-70.55357],[-33.40381,-70.55486],[-33.40578,-70.55584],[-33.39962,-70.55999],[-33.39915,-70.55856],[-33.40175,-70.55692],[-33.40169,-70.55691],[-33.40065,-70.5567],[-33.40472,-70.55574],[-33.39506,-70.55981],[-33.39479,-70.55911],[-33.39432,-70.55775],[-33.39407,-70.55706],[-33.39349,-70.55529],[-33.39346,-70.55499],[-33.39362,-70.55371],[-33.39321,-70.55213],[-33.39306,-70.55173],[-33.39269,-70.55073],[-33.39268,-70.55069],[-33.39573,-70.55553],[-33.39446,-70.55605],[-33.39318,-70.55663],[-33.39658,-70.55635],[-33.39659,-70.55617],[-33.39944,-70.55599],[-33.39929,-70.55646],[-33.40414,-70.55561],[-33.40438,-70.55905],[-33.40032,-70.55608],[-33.40181,-70.55616],[-33.39693,-70.55991],[-33.3967,-70.55909],[-33.39648,-70.55829],[-33.39627,-70.55758],[-33.39608,-70.55688],[-33.39552,-70.55459],[-33.39716,-70.55453],[-33.39725,-70.55479],[-33.39738,-70.55518],[-33.39778,-70.55636],[-33.39827,-70.55781],[-33.39851,-70.55852],[-33.39965,-70.55831],[-33.39508,-70.55817],[-33.3939,-70.55874],[-33.39597,-70.55854],[-33.3976,-70.5585],[-33.39778,-70.55781],[-33.39793,-70.5595],[-33.39854,-70.55647],[-33.40079,-70.55431],[-33.40139,-70.55493],[-33.40332,-70.5546],[-33.40183,-70.5538],[-33.4014,-70.55357],[-33.404,-70.55268],[-33.40434,-70.55176],[-33.40471,-70.5508],[-33.40493,-70.5502],[-33.40225,-70.55259],[-33.40165,-70.55279],[-33.40065,-70.55225],[-33.40426,-70.55055],[-33.40317,-70.55227],[-33.40557,-70.55072],[-33.40507,-70.55206],[-33.40468,-70.55309],[-33.40349,-70.55141],[-33.40557,-70.5524],[-33.40619,-70.55471],[-33.40133,-70.55513],[-33.40078,-70.55315],[-33.40462,-70.55436],[-33.40346,-70.55012],[-33.40196,-70.54851],[-33.40198,-70.54846],[-33.4025,-70.54702],[-33.40266,-70.54636],[-33.40268,-70.5462],[-33.4026,-70.54451],[-33.40259,-70.54445],[-33.40583,-70.54785],[-33.40524,-70.54633],[-33.40365,-70.54615],[-33.40373,-70.54738],[-33.40375,-70.548],[-33.40292,-70.54756],[-33.40499,-70.54803],[-33.40433,-70.54899],[-33.40629,-70.54428],[-33.40096,-70.54536],[-33.4008,-70.54681],[-33.40087,-70.54684],[-33.40139,-70.54802],[-33.40349,-70.54852],[-33.40086,-70.54449],[-33.4005,-70.5476],[-33.40406,-70.54298],[-33.40407,-70.54301],[-33.40061,-70.5516],[-33.39737,-70.55173],[-33.39694,-70.55134],[-33.39607,-70.55052],[-33.39531,-70.5498],[-33.39511,-70.54958],[-33.39445,-70.54835],[-33.39394,-70.54676],[-33.39366,-70.54615],[-33.39905,-70.55056],[-33.39959,-70.54955],[-33.40003,-70.54861],[-33.39966,-70.54705],[-33.3992,-70.54806],[-33.39854,-70.54949],[-33.39825,-70.55012],[-33.40215,-70.54992],[-33.40116,-70.54934],[-33.40175,-70.55087],[-33.40156,-70.55135],[-33.40095,-70.54979],[-33.40072,-70.55028],[-33.39366,-70.55189],[-33.3936,-70.55172],[-33.39316,-70.5505],[-33.39261,-70.549],[-33.3922,-70.54789],[-33.39201,-70.54736],[-33.3936,-70.55021],[-33.39541,-70.54884],[-33.3946,-70.55293],[-33.39456,-70.55282],[-33.39442,-70.54956],[-33.39347,-70.54701],[-33.39279,-70.54756],[-33.39353,-70.5485],[-33.39542,-70.54455],[-33.39537,-70.54445],[-33.39502,-70.54369],[-33.39456,-70.54273],[-33.39425,-70.54205],[-33.39418,-70.54189],[-33.39408,-70.54075],[-33.40532,-70.54369],[-33.40512,-70.54275],[-33.40493,-70.54185],[-33.4046,-70.54032],[-33.40338,-70.54318],[-33.40248,-70.5433],[-33.40092,-70.54331],[-33.40075,-70.54332],[-33.39973,-70.54335],[-33.39869,-70.54332],[-33.39743,-70.54329],[-33.39657,-70.54327],[-33.3962,-70.54327],[-33.39939,-70.54618],[-33.399,-70.54661],[-33.39666,-70.53997],[-33.39662,-70.54105],[-33.39657,-70.54216],[-33.3965,-70.54411],[-33.40346,-70.55312],[-33.39971,-70.55498],[-33.39876,-70.55478],[-33.4062,-70.54345],[-33.40604,-70.54295],[-33.40078,-70.54258],[-33.40294,-70.54288],[-33.39523,-70.55401],[-33.39314,-70.55355],[-33.39267,-70.55348],[-33.39862,-70.5444],[-33.39868,-70.54222],[-33.39871,-70.54115],[-33.39396,-70.54327],[-33.39357,-70.54352],[-33.39862,-70.5454],[-33.39829,-70.55587],[-33.3986,-70.55399],[-33.39786,-70.55383],[-33.39745,-70.55284],[-33.39833,-70.55262],[-33.39693,-70.55027],[-33.39516,-70.55115],[-33.39542,-70.55178],[-33.3959,-70.55209],[-33.3966,-70.55193],[-33.39624,-70.55293],[-33.3968,-70.55291],[-33.39947,-70.55252],[-33.39984,-70.5517],[-33.39862,-70.55089],[-33.3999,-70.55316],[-33.39794,-70.54448],[-33.39789,-70.54527],[-33.39689,-70.54523],[-33.39293,-70.55971],[-33.39273,-70.55914],[-33.39255,-70.55863],[-33.39231,-70.55793],[-33.39205,-70.55717],[-33.39226,-70.55991],[-33.3922,-70.55217],[-33.39245,-70.55454],[-33.39218,-70.54337],[-33.39215,-70.54423],[-33.39326,-70.54558],[-33.40258,-70.54251],[-33.40133,-70.54256],[-33.40075,-70.54182],[-33.40082,-70.54181],[-33.40184,-70.54176],[-33.40272,-70.54166],[-33.40314,-70.54068],[-33.40314,-70.53967],[-33.40575,-70.53878],[-33.40524,-70.53941],[-33.40429,-70.53671],[-33.40448,-70.5372],[-33.40068,-70.54007],[-33.404,-70.54044],[-33.40241,-70.53384],[-33.40508,-70.53433],[-33.40266,-70.5342],[-33.40188,-70.533],[-33.40419,-70.5355],[-33.40432,-70.53523],[-33.40441,-70.53532],[-33.40631,-70.53533],[-33.40619,-70.53536],[-33.40587,-70.53527],[-33.40559,-70.53298],[-33.40126,-70.53165],[-33.40073,-70.53209],[-33.39973,-70.53416],[-33.3997,-70.53423],[-33.40252,-70.53661],[-33.40232,-70.53639],[-33.4016,-70.53572],[-33.4007,-70.53496],[-33.39897,-70.53372],[-33.39803,-70.53324],[-33.39761,-70.5331],[-33.39718,-70.533],[-33.39625,-70.5329],[-33.39528,-70.53281],[-33.39427,-70.533],[-33.39393,-70.5331],[-33.39408,-70.53103],[-33.39258,-70.5325],[-33.39572,-70.54106],[-33.3954,-70.54116],[-33.39359,-70.54207],[-33.39242,-70.54171],[-33.40407,-70.5332],[-33.40375,-70.53286],[-33.4031,-70.53177],[-33.40276,-70.53061],[-33.40257,-70.52985],[-33.40237,-70.52881],[-33.40233,-70.52867],[-33.40364,-70.5308],[-33.39972,-70.54225],[-33.39773,-70.54219],[-33.39626,-70.54215],[-33.39989,-70.54113],[-33.39728,-70.54107],[-33.39208,-70.52855],[-33.39223,-70.5289],[-33.3926,-70.52984],[-33.39272,-70.53008],[-33.39496,-70.52158],[-33.39491,-70.52216],[-33.39479,-70.52369],[-33.39474,-70.52432],[-33.39465,-70.52547],[-33.39452,-70.52696],[-33.39449,-70.52744],[-33.39443,-70.52824],[-33.39439,-70.52874],[-33.39431,-70.52981],[-33.4017,-70.53267],[-33.40102,-70.53074],[-33.4009,-70.52973],[-33.40097,-70.52793],[-33.40107,-70.52678],[-33.4011,-70.52635],[-33.4012,-70.52506],[-33.40129,-70.52384],[-33.40142,-70.52209],[-33.3936,-70.53921],[-33.39376,-70.53933],[-33.39453,-70.53973],[-33.39556,-70.53994],[-33.39726,-70.53998],[-33.39929,-70.54005],[-33.40086,-70.54001],[-33.40189,-70.53979],[-33.40227,-70.53965],[-33.40375,-70.53893],[-33.40464,-70.53213],[-33.40439,-70.5319],[-33.403,-70.52855],[-33.40154,-70.53329],[-33.39977,-70.53222],[-33.39933,-70.53198],[-33.39876,-70.53177],[-33.39796,-70.53157],[-33.39712,-70.53148],[-33.3961,-70.53139],[-33.39511,-70.53122],[-33.39313,-70.54015],[-33.40412,-70.5376],[-33.40321,-70.53703],[-33.39857,-70.53494],[-33.39795,-70.53489],[-33.39716,-70.53463],[-33.39555,-70.53381],[-33.39523,-70.53369],[-33.39357,-70.53305],[-33.39319,-70.53311],[-33.40063,-70.52614],[-33.40471,-70.51794],[-33.40413,-70.51823],[-33.40336,-70.51842],[-33.4007,-70.51738],[-33.40074,-70.51989],[-33.40145,-70.52099],[-33.39949,-70.51573],[-33.39925,-70.51666],[-33.39889,-70.51736],[-33.39719,-70.51723],[-33.39623,-70.51718],[-33.39535,-70.51709],[-33.39973,-70.51968],[-33.3987,-70.51958],[-33.39805,-70.5195],[-33.39703,-70.51938],[-33.39613,-70.51929],[-33.39539,-70.5192],[-33.39444,-70.51905],[-33.39963,-70.52586],[-33.39894,-70.52578],[-33.39792,-70.52566],[-33.3969,-70.52555],[-33.39618,-70.52547],[-33.39447,-70.51574],[-33.3946,-70.51589],[-33.39482,-70.51548],[-33.39623,-70.51522],[-33.39596,-70.51552],[-33.40102,-70.51514],[-33.40109,-70.51584],[-33.40056,-70.52289],[-33.39988,-70.52281],[-33.39883,-70.5227],[-33.39782,-70.52258],[-33.39713,-70.52251],[-33.39618,-70.5224],[-33.39446,-70.52528],[-33.39353,-70.5251],[-33.39262,-70.52482],[-33.40162,-70.51011],[-33.40213,-70.51107],[-33.40241,-70.51159],[-33.40269,-70.51211],[-33.40275,-70.51225],[-33.40278,-70.5133],[-33.40266,-70.51482],[-33.40265,-70.51559],[-33.40077,-70.52905],[-33.39941,-70.5289],[-33.39873,-70.52883],[-33.39803,-70.52876],[-33.39737,-70.52869],[-33.39702,-70.52864],[-33.39594,-70.52852],[-33.39461,-70.52837],[-33.40303,-70.52539],[-33.39425,-70.5167],[-33.39287,-70.5161],[-33.39252,-70.51594],[-33.39371,-70.51874],[-33.39308,-70.51846],[-33.3925,-70.5182],[-33.39432,-70.52218],[-33.39383,-70.52208],[-33.39359,-70.52202],[-33.39252,-70.52163],[-33.39665,-70.52872],[-33.39654,-70.52506],[-33.39838,-70.52866],[-33.39878,-70.52719],[-33.39778,-70.52722],[-33.39526,-70.52076],[-33.39252,-70.53935],[-33.39216,-70.54008],[-33.3926,-70.53651],[-33.39213,-70.53817],[-33.39231,-70.53173],[-33.39257,-70.53602],[-33.39267,-70.535],[-33.3927,-70.53482],[-33.41576,-70.51326],[-33.41517,-70.51308],[-33.41714,-70.5111],[-33.4169,-70.51092],[-33.41702,-70.5111],[-33.41416,-70.51001],[-33.41433,-70.51013],[-33.41716,-70.50701],[-33.41702,-70.50665],[-33.41695,-70.50591],[-33.41685,-70.50677],[-33.41412,-70.50691],[-33.4144,-70.507],[-33.41549,-70.5072],[-33.41853,-70.50949],[-33.41883,-70.50949],[-33.41764,-70.51],[-33.41428,-70.50994],[-33.40716,-70.51218],[-33.40705,-70.51175],[-33.40685,-70.51108],[-33.40801,-70.51187],[-33.40644,-70.51245],[-33.41146,-70.51322],[-33.41067,-70.51217],[-33.41026,-70.51105],[-33.40998,-70.50993],[-33.41506,-70.51217],[-33.40352,-70.51307],[-33.40454,-70.51255],[-33.40518,-70.51219],[-33.40559,-70.51195],[-33.40714,-70.51087],[-33.40801,-70.5103],[-33.40895,-70.51006],[-33.41133,-70.50603],[-33.41188,-70.50607],[-33.41262,-70.50621],[-33.40706,-70.50834],[-33.4061,-70.50883],[-33.40581,-70.50895],[-33.40525,-70.50914],[-33.40373,-70.50959],[-33.40348,-70.50969],[-33.40282,-70.51009],[-33.4095,-70.50987],[-33.40887,-70.50995],[-33.41334,-70.50945],[-33.41246,-70.50948],[-33.41086,-70.50553],[-33.41067,-70.50526],[-33.41034,-70.50439],[-33.41011,-70.50312],[-33.4067,-70.51334],[-33.40755,-70.5144],[-33.41793,-70.50788],[-33.41697,-70.51129],[-33.41631,-70.51222],[-33.41806,-70.50773],[-33.40169,-70.50989],[-33.40174,-70.50981],[-33.40468,-70.50844],[-33.40637,-70.50773],[-33.40783,-70.50715],[-33.40868,-70.50686],[-33.40891,-70.50677],[-33.40914,-70.50669],[-33.41002,-70.5064],[-33.40885,-70.50667],[-33.40433,-70.50846],[-33.41244,-70.51159],[-33.41218,-70.51023],[-33.41347,-70.51277],[-33.40713,-70.50859],[-33.40992,-70.51539],[-33.40968,-70.51441],[-33.40883,-70.51345],[-33.40833,-70.51284],[-33.4071,-70.51546],[-33.41068,-70.51302],[-33.40782,-70.50895],[-33.40917,-70.50806],[-33.40868,-70.50814],[-33.41023,-70.50801],[-33.41015,-70.50672],[-33.41072,-70.50795],[-33.4112,-70.50776],[-33.41168,-70.50762],[-33.41246,-70.50798],[-33.41253,-70.50794],[-33.40406,-70.51188],[-33.40358,-70.51108],[-33.4025,-70.51505],[-33.4059,-70.51482],[-33.40503,-70.51365],[-33.40244,-70.51347],[-33.40163,-70.51367],[-33.40071,-70.51359],[-33.40046,-70.51309],[-33.40368,-70.51347],[-33.40461,-70.51446],[-33.4054,-70.51416],[-33.40123,-70.50625],[-33.40246,-70.5054],[-33.40261,-70.50524],[-33.40459,-70.50424],[-33.40124,-70.50887],[-33.40116,-70.50716],[-33.40191,-70.50596],[-33.40417,-70.50469],[-33.40367,-70.50446],[-33.40213,-70.50394],[-33.39892,-70.50795],[-33.39862,-70.50984],[-33.39859,-70.51004],[-33.39826,-70.512],[-33.39807,-70.51322],[-33.39737,-70.50759],[-33.39706,-70.50947],[-33.39671,-70.51163],[-33.3966,-70.51232],[-33.39484,-70.51426],[-33.39504,-70.51284],[-33.39519,-70.5117],[-33.3955,-70.50944],[-33.40509,-70.50239],[-33.40074,-70.51017],[-33.39976,-70.51017],[-33.39428,-70.51512],[-33.3935,-70.51516],[-33.39242,-70.51473],[-33.39388,-70.5112],[-33.39306,-70.51088],[-33.39265,-70.51069],[-33.39343,-70.5128],[-33.39243,-70.5124],[-33.39295,-70.51408],[-33.39226,-70.5138],[-33.39304,-70.50884],[-33.39324,-70.50898],[-33.3936,-70.50913],[-33.39456,-70.50947],[-33.39812,-70.51404],[-33.4001,-70.51497],[-33.39834,-70.51477],[-33.39808,-70.51474],[-33.39393,-70.51053],[-33.39451,-70.51075],[-33.40048,-70.51217],[-33.39596,-70.50589],[-33.39511,-70.50545],[-33.39424,-70.50487],[-33.39335,-70.50417],[-33.3932,-70.50699],[-33.39365,-70.50701],[-33.39399,-70.50628],[-33.3935,-70.50604],[-33.40245,-70.5024],[-33.40248,-70.50228],[-33.40261,-70.50168],[-33.39224,-70.50347],[-33.39468,-70.50562],[-33.39985,-70.51349],[-33.39954,-70.50671],[-33.39989,-70.50668],[-33.40016,-70.50665],[-33.39482,-70.50889],[-33.39427,-70.50849],[-33.39214,-70.50718],[-33.39605,-70.5102],[-33.3942,-70.51234],[-33.39351,-70.51206],[-33.39254,-70.51166],[-33.39758,-70.50981],[-33.39747,-70.51052],[-33.39814,-70.51563],[-33.39566,-70.51291],[-33.39743,-70.51111],[-33.39945,-70.51201],[-33.39614,-70.51155],[-33.39803,-70.51416],[-33.39883,-70.51221],[-33.39542,-70.51433],[-33.39965,-70.51269],[-33.39632,-70.5105],[-33.39809,-70.51654],[-33.39685,-70.51645],[-33.39633,-70.51381],[-33.39656,-70.51546],[-33.3993,-70.50796],[-33.39681,-70.50746],[-33.39594,-70.50725],[-33.39806,-70.50844],[-33.39671,-70.50812],[-33.39628,-70.50865],[-33.39628,-70.50513],[-33.39632,-70.50495],[-33.39644,-70.5043],[-33.39875,-70.50653],[-33.398,-70.50643],[-33.39698,-70.50623],[-33.4003,-70.50391],[-33.40023,-70.50458],[-33.39811,-70.50679],[-33.3995,-70.50931],[-33.4053,-70.50231],[-33.40531,-70.50228],[-33.40528,-70.50217],[-33.40262,-70.50244],[-33.39321,-70.50088],[-33.39371,-70.49996],[-33.39413,-70.49873],[-33.39209,-70.49854],[-33.39283,-70.49828],[-33.39223,-70.49928],[-33.39334,-70.49934],[-33.39206,-70.50548],[-33.39268,-70.50663],[-33.39245,-70.50873],[-33.39252,-70.50893],[-33.39266,-70.50037],[-33.39326,-70.50206],[-33.39309,-70.5024],[-33.39266,-70.50335]];
+// Hechos reportados (marcadores de referencia)
+const ALUVION_REFS=[{"id":"buses","ll":[-33.39957,-70.50655],"icono":"🚌","titulo":"Autos y buses arrastrados (reportado)","detalle":"Av. La Plaza con Camino El Alba. Fuente: prensa, 8–9 oct 2026."},{"id":"clinica","ll":[-33.40053,-70.50865],"icono":"🏥","titulo":"Clínica San Carlos de Apoquindo: barro en la urgencia (reportado)","detalle":"Pacientes evacuados. Fuente: prensa, 8 oct 2026."},{"id":"metro","ll":[-33.40789,-70.54499],"icono":"Ⓜ️","titulo":"Metro Los Dominicos cerrado esa tarde (reportado)","detalle":"Fuente: prensa, 8 oct 2026."}];
+// Ubicaciones por defecto (verificadas con tools/ubicaciones.mjs y calibrar_ubicacion1.mjs)
+const ALUVION_UBIC=[{"nombre":"Cerca del origen","ll":[-33.40398,-70.51285]},{"nombre":"Aguas abajo / borde","ll":[-33.39737,-70.52869]},{"nombre":"Fuera de riesgo","ll":[-33.39541,-70.54884]}];
+// Rutas de respaldo desde las ubicaciones por defecto ("índice|movilidad reducida"), calculadas en vivo con Valhalla
+// por la propia página (tools/rutas_respaldo.mjs). Se usan solo si los servicios de rutas no responden.
+const ALUVION_RUTAS={"0|0":{"pts":[[-33.40398,-70.51285],[-33.40398,-70.51285],[-33.40454,-70.51255],[-33.40519,-70.51219],[-33.40559,-70.51195],[-33.40594,-70.51172],[-33.4065,-70.51133],[-33.40669,-70.51119],[-33.40686,-70.51108],[-33.40714,-70.51087],[-33.40745,-70.51064],[-33.40764,-70.5105],[-33.40779,-70.51041],[-33.4079,-70.51035],[-33.40801,-70.5103],[-33.40816,-70.51024],[-33.40823,-70.51021]],"km":0.534,"names":["Avenida San Ramón"],"dest":[-33.40823,-70.51021,882,"Punto seguro en Avenida San Ramón","Punto de encuentro sugerido"],"pasos":false,"fuente":"Valhalla (en vivo)","obtenida":"2026-10-11"},"0|1":{"pts":[[-33.40398,-70.51285],[-33.40398,-70.51285],[-33.40454,-70.51255],[-33.40519,-70.51219],[-33.40559,-70.51195],[-33.40594,-70.51172],[-33.4065,-70.51133],[-33.40669,-70.51119],[-33.40686,-70.51108],[-33.40714,-70.51087],[-33.40745,-70.51064],[-33.40764,-70.5105],[-33.40779,-70.51041],[-33.4079,-70.51035],[-33.40801,-70.5103],[-33.40816,-70.51024],[-33.40823,-70.51021]],"km":0.534,"names":["Avenida San Ramón"],"dest":[-33.40823,-70.51021,882,"Punto seguro en Avenida San Ramón","Punto de encuentro sugerido"],"pasos":false,"fuente":"Valhalla (en vivo)","obtenida":"2026-10-11"},"1|0":{"pts":[[-33.39737,-70.52869],[-33.39737,-70.52868],[-33.39726,-70.52867],[-33.39702,-70.52864],[-33.39666,-70.5286],[-33.39594,-70.52852],[-33.39559,-70.52848]],"km":0.201,"names":["Camino Mirasol"],"dest":[-33.39562,-70.52849,793,"Punto seguro en Camino Mirasol","Punto de encuentro sugerido"],"pasos":false,"fuente":"Valhalla (en vivo)","obtenida":"2026-10-11"},"1|1":{"pts":[[-33.39737,-70.52869],[-33.39737,-70.52868],[-33.39726,-70.52867],[-33.39702,-70.52864],[-33.39666,-70.5286],[-33.39594,-70.52852],[-33.39559,-70.52848]],"km":0.201,"names":["Camino Mirasol"],"dest":[-33.39562,-70.52849,793,"Punto seguro en Camino Mirasol","Punto de encuentro sugerido"],"pasos":false,"fuente":"Valhalla (en vivo)","obtenida":"2026-10-11"}};
+// Tsunami Valparaíso · zonas seguras precalculadas con el mismo algoritmo de la página (tools/tsunami_datos.mjs, 2026-10-11):
+// [lat, lon, cota m, distancia al mar m, nombre, tipo]
+const VALPO_ZONAS=[[-33.04452,-71.63118,99,822,"","Colegio"],[-33.02677,-71.58222,33,377,"Escuela de Arquitectura y Diseño, e[ad], Pontificia Universidad Catolica de Valparaíso","Universidad"],[-33.03146,-71.58389,40,241,"Stadio Italiano","Recinto deportivo"],[-33.03468,-71.57098,95,1491,"Santa Maria","Colegio"],[-33.04606,-71.63141,110,952,"Escuela Particular San Luis","Colegio"],[-33.04654,-71.63336,119,1122,"Colegio Gandhi","Colegio"],[-33.04488,-71.6325,104,944,"Colegio Nuestra Señora de La Misericordia","Colegio"],[-33.04426,-71.63195,104,862,"Colegio Luis Galdamez","Colegio"],[-33.04657,-71.63381,119,1156,"Colegio Bordemar","Colegio"],[-33.04696,-71.63201,121,1062,"Colegio Internacional","Colegio"],[-33.03463,-71.64113,158,1162,"Colegio Luterano Concordia","Colegio"],[-33.03471,-71.59514,13,46,"Gimnasio 3","Recinto deportivo"],[-33.04807,-71.61609,12,327,"Universidad de Playa Ancha Sede Independencia","Universidad"],[-33.04844,-71.6135,14,361,"SportValp","Recinto deportivo"],[-33.03878,-71.62652,8,154,"Sportlife","Recinto deportivo"],[-33.04539,-71.60448,10,553,"","Recinto deportivo"],[-33.03863,-71.62723,11,219,"AIEP Valparaiso","Instituto"],[-33.04725,-71.61483,13,267,"Instituto Profesional Mar Futuro","Instituto"],[-33.0508,-71.62183,85,711,"Escuela Básica Piloto 1° Luis Pardo Villalón","Colegio"],[-33.0542,-71.62271,134,1090,"Colegio Pablo Neruda","Colegio"],[-33.04808,-71.63034,110,1058,"Fundación Teatromuseo del Títere y el Payaso","Centro comunitario"],[-33.04917,-71.60748,11,586,"Colegio San Pedro Nolasco","Colegio"],[-33.02896,-71.63682,85,766,"Universidad de Valparaíso (Facultad de Ciencias - Ingeniería Ambiental)","Universidad"],[-33.03651,-71.58999,57,540,"Colegio Jeanne D'Arc","Colegio"],[-33.02275,-71.63275,11,16,"Escuela de Ciencias del Mar","Universidad"],[-33.04824,-71.62253,50,503,"Junta de Vecinos Nº23 Cerro Bellavista","Centro comunitario"],[-33.04614,-71.59952,75,898,"Junta de Vecinos n°9 Cerro Larraín","Centro comunitario"],[-33.0548,-71.62169,133,1121,"Centro Educativo Florida","Colegio"],[-33.04425,-71.59434,112,946,"Colegio Sagrado Corazón de Jesús","Colegio"],[-33.04585,-71.60299,12,682,"Escuela Uruguay","Colegio"],[-33.0512,-71.60079,20,1179,"Liceo Coeducacional La Igualdad","Colegio"],[-33.05076,-71.60796,16,716,"Colegio Carlos Cousiño","Colegio"],[-33.05341,-71.60551,41,1083,"Escuela Particular Sagrada Familia de Nazareth","Colegio"],[-33.04879,-71.60882,12,483,"Escuela Ramón Barros Luco","Colegio"],[-33.04762,-71.60942,11,343,"Colegio Speiro","Colegio"],[-33.0497,-71.61206,12,496,"Colegio Inmaculada Concepción Nuestra Señora de Lourdes","Colegio"],[-33.04908,-71.61308,13,427,"Liceo Técnico Femenino de Valparaíso","Colegio"],[-33.04955,-71.61527,15,505,"Colegio Montealegre","Colegio"],[-33.0478,-71.61891,12,302,"Colegio Agustín Edwards","Colegio"],[-33.03501,-71.58953,48,369,"Junta de Vecinos 50 A Población Cuatro Luces","Centro comunitario"],[-33.0475,-71.6261,65,702,"Centro Comunitario Autogestionado Patio Volantín","Centro comunitario"],[-33.04495,-71.60588,10,413,"Gimnasio Casa Central Pontificia Universidad Católica de Valparaíso","Recinto deportivo"],[-33.03545,-71.59548,40,51,"Sala de Estar y Ocio","Centro comunitario"],[-33.04946,-71.60155,16,1005,"Colegio Salesiano Valparaíso","Colegio"],[-33.05011,-71.60242,12,985,"Instituto Superior de Comercio Francisco Araya Bennett","Colegio"],[-33.05256,-71.60114,12,1257,"Liceo Juana Ross de Edwards","Colegio"],[-33.02458,-71.64047,48,451,"1-A Casa central Cuerpo A","Universidad"],[-33.02412,-71.64106,38,376,"1-C Casa central Cuerpo C","Universidad"],[-33.05322,-71.6014,12,1293,"Villa Victoria","Centro comunitario"],[-33.04208,-71.62752,52,386,"Instituto de Música Pontificia Universidad Católica de Valparaíso","Universidad"],[-33.0653,-71.58646,164,3226,"Escuela Jorge Alessandri Rodríguez","Colegio"],[-33.03959,-71.63439,48,893,"Escuela Blas Cuevas Ramón Allende","Colegio"],[-33.045,-71.62652,37,578,"Escuela República Argentina","Colegio"],[-33.05182,-71.62539,107,981,"Liceo Santa Teresa","Colegio"],[-33.06187,-71.59124,119,2642,"Colegio Particular Adventista","Colegio"],[-33.03307,-71.64247,143,949,"Escuela N° 230 Vaccarezza","Colegio"],[-33.05187,-71.65209,264,680,"Colegio Particular Junior School 2","Colegio"],[-33.03221,-71.63947,128,1091,"Colegio Dabruna","Colegio"],[-33.04222,-71.63317,90,853,"Colegio Particular Constancio Vigil","Colegio"],[-33.03179,-71.63857,125,1066,"Centro integral Nueva Siembra","Colegio"],[-33.04899,-71.61935,28,440,"Escuela Especial Santa Teresita","Colegio"],[-33.05285,-71.6498,291,919,"Escuela Especial de Lenguaje Nahuel","Colegio"],[-33.03507,-71.57047,113,1550,"Escuela Básica Santa María de Agua Santa","Colegio"],[-33.04303,-71.59736,95,757,"Escuela Especial de Lenguaje ALONKEN","Colegio"],[-33.04918,-71.62313,64,621,"Centro de Educación Especial Bellavista","Colegio"],[-33.04351,-71.58937,128,1090,"Escuela Especial de Lenguaje Educatel Placeres","Colegio"],[-33.05727,-71.58497,134,2616,"Canchas Santos Ossa","Recinto deportivo"],[-33.06452,-71.60949,270,2160,"Escuela Especial de Lenguaje Trompita de colores","Colegio"],[-33.04802,-71.61503,14,351,"Colegio Auromar","Colegio"],[-33.02123,-71.64234,18,119,"Colegio Hospital Salvador de Valparaiso","Colegio"],[-33.04238,-71.57126,195,1909,"Escuela Ilusion","Colegio"],[-33.02881,-71.57397,35,1116,"Colegio María Raquel Cereceda","Colegio"],[-33.0404,-71.60148,53,376,"Centro Educacional CENINES","Colegio"],[-33.03248,-71.64327,140,851,"Escuela Hirondelle","Colegio"],[-33.05351,-71.57847,201,2582,"Escuela Mariano Latorre","Colegio"],[-33.0438,-71.62032,7,37,"Centro Estudios y Capacitacion Para Sordos","Colegio"],[-33.03102,-71.63616,108,835,"Instituto Profesional Escuela de Marina Mercante Piloto Pardo","Instituto"],[-33.05655,-71.6144,121,1266,"Escuela Básica Arturo Prat","Colegio"],[-33.04096,-71.62536,16,152,"Corporación Educacional Juan Luis Vives Valparaíso","Colegio"],[-33.03467,-71.64759,150,707,"Escuela Especial Amor y Esperanza","Colegio"],[-33.04635,-71.62045,15,219,"Centro de Educación de Jóvenes y Adultos Pitágoras","Colegio"],[-33.02827,-71.63307,71,423,"Escuela Especial De Lenguaje Pequenino","Colegio"],[-33.04355,-71.58256,135,1411,"Centro Educativo Luz De Esperanza","Instituto"],[-33.03193,-71.637,115,959,"Instituto Técnico Profesional Marítimo De Valparaíso","Instituto"],[-33.06611,-71.63145,426,2634,"Centro Educativo Horizonte","Instituto"],[-33.06092,-71.59112,110,2574,"Escuela Especial De Lenguaje San Roque","Colegio"],[-33.05122,-71.61097,26,676,"Escuela Intrahospitalaria CANEC","Colegio"],[-33.02758,-71.58262,54,347,"Universidad del Mar","Universidad"],[-33.02334,-71.63253,34,74,"PUCV Industrias Creativas","Universidad"],[-33.0516,-71.63219,172,1427,"Casa Oani","Centro comunitario"],[-33.04712,-71.60286,11,766,"Espacio La Compañía","Centro comunitario"],[-33.03987,-71.6031,13,214,"Asociación de jubilados ferroviarios y montepiadas \"Valparaíso\"","Centro comunitario"],[-33.04587,-71.61316,14,73,"Facultad de Ingeniería Universidad de Valparaíso","Universidad"],[-33.03139,-71.58114,76,477,"Plaza Recreo","Parque"],[-33.03297,-71.58924,8,141,"Instituto Nacional de Capacitación Profesional","Instituto"],[-33.04059,-71.62859,40,389,"Plaza Joaquín Edwards Bello","Parque"],[-33.04786,-71.63098,113,1074,"Plaza Bismarck","Parque"],[-33.05364,-71.61618,122,939,"Plaza Esmeralda","Parque"],[-33.02899,-71.63363,86,511,"Plaza Waddington","Parque"],[-33.03984,-71.59083,98,695,"Plaza La Conquista","Parque"],[-33.03455,-71.58376,84,470,"Plaza Esperanza","Parque"],[-33.03244,-71.57107,87,1416,"Estadio Español","Recinto deportivo"],[-33.04804,-71.59813,100,1142,"","Parque"],[-33.05291,-71.62166,118,921,"Plaza Mena","Parque"],[-33.03648,-71.63047,11,553,"Plaza Echaurren","Parque"],[-33.03725,-71.64066,162,1403,"Plaza Bilbao","Parque"],[-33.0196,-71.64184,3,152,"Plaza Carvallo","Parque"],[-33.03416,-71.63011,49,488,"Plaza Wheelwright","Parque"],[-33.02268,-71.64395,8,71,"Plaza Sebastián Elcano","Parque"],[-33.0204,-71.63672,30,209,"Plaza Rubén Darío","Parque"],[-33.05862,-71.59499,106,2140,"Estadio O'Higgins","Recinto deportivo"],[-33.0405,-71.60251,39,291,"Liceo Barón","Colegio"],[-33.03934,-71.62976,24,461,"Plaza de Justicia","Parque"],[-33.04357,-71.60172,57,549,"Escuela Juan de Saavedra","Colegio"],[-33.02814,-71.63786,75,770,"Liceo Alfredo Nazar Feres A-23","Colegio"],[-33.05245,-71.609,19,853,"Parque El Litre","Parque"],[-33.02589,-71.57117,33,1378,"Plaza Capuccinos","Parque"],[-33.02599,-71.64074,47,545,"Escuela Diego Portales Palazuelos","Colegio"],[-33.04389,-71.62675,58,484,"","Parque"],[-33.04356,-71.63099,84,744,"Centro de Capacitacion Laboral","Colegio"],[-33.05911,-71.59205,96,2372,"Parque Jack Davis","Recinto deportivo"],[-33.03417,-71.57971,78,728,"Escuela Lord Cochrane","Colegio"],[-33.02677,-71.63891,66,712,"Universidad de Valparaíso (Facultad de Ciencias)","Universidad"],[-33.02518,-71.63931,52,577,"Universidad de Valparaíso (Facultad de Arquitectura)","Universidad"],[-33.02597,-71.63851,59,623,"Universidad de Valparaíso (Gimnasio Polideportivo)","Universidad"],[-33.03815,-71.63086,24,558,"Plaza Eleuterio Ramírez","Parque"],[-33.023,-71.63341,22,66,"Escuela de Alimentos Universidad Católica De Valparaíso","Universidad"],[-33.03376,-71.58004,70,678,"Escuela Lord Cochrane - Recreo Viña del Mar","Colegio"],[-33.04523,-71.65215,235,576,"Ex escuela Japón","Colegio"],[-33.06377,-71.58312,137,3339,"Club de Campo Don Elías Figueroa","Recinto deportivo"],[-33.0542,-71.61033,81,1013,"Colegio Teresita de Lisieux","Colegio"],[-33.05279,-71.60609,24,996,"Centro Educativo Gran Bretaña","Instituto"],[-33.05456,-71.6222,133,1111,"","Parque"],[-33.0536,-71.62192,124,1001,"Cerro Florida","Parque"],[-33.05751,-71.60468,118,1524,"Ludoteca","Centro comunitario"],[-33.04807,-71.63159,113,1127,"Liceo Pedro Montt","Colegio"],[-33.05946,-71.59355,112,2300,"Plazuela O'Higgins","Parque"],[-33.0588,-71.58764,161,2665,"Plaza Hospital","Parque"],[-33.06023,-71.59296,120,2400,"Plaza Carlos Von Moltke","Parque"],[-33.06108,-71.59373,128,2421,"Escuela Lorenzo Luzuriaga","Colegio"],[-33.0577,-71.60806,136,1439,"Escuela Básica David Ben Gurion","Colegio"],[-33.02709,-71.63535,73,554,"Liceo María Luisa Bombal","Colegio"],[-33.03072,-71.58077,77,493,"Escuela Teodoro Lowey","Colegio"],[-33.02945,-71.58209,65,357,"Liceo A-32 Benjamín Vicuña Mackena","Colegio"],[-33.04253,-71.63605,114,1116,"Plaza Padre Gabriel Correa","Parque"],[-33.04806,-71.60743,11,491,"Plaza O'Higgins","Parque"],[-33.04783,-71.61418,15,307,"Parque Italia","Parque"],[-33.04627,-71.6198,8,177,"Plaza de la Victoria","Parque"],[-33.06423,-71.62631,367,2252,"Junta de Vecinos","Centro comunitario"],[-33.0467,-71.61053,10,204,"Scuola Italiana Arturo Dell'Oro","Colegio"],[-33.03224,-71.58815,35,57,"Gimnasio Numancia","Recinto deportivo"],[-33.05009,-71.61413,14,552,"Liceo Eduardo de la Barra","Colegio"],[-33.04583,-71.62697,46,678,"","Parque"],[-33.05059,-71.62396,96,793,"Plaza Yungay","Parque"],[-33.04531,-71.61112,9,41,"Clínica Valparaíso","Hospital"],[-33.04699,-71.61143,11,206,"Escuela Grecia","Colegio"],[-33.04689,-71.60728,14,408,"Fortín Prat","Recinto deportivo"],[-33.04497,-71.60665,10,346,"Pontificia Universidad Católica de Valparaíso","Universidad"],[-33.04459,-71.6125,8,0,"Facultad de Ingeniería PUCV","Universidad"],[-33.04529,-71.61388,11,31,"Escuela de Ingeniería en Medioambiente de la Universidad de Valparaíso","Universidad"],[-33.04448,-71.6155,11,0,"DUOC UC Sede Valparaíso","Instituto"],[-33.04526,-71.61555,12,55,"DUOC UC Edificio Brasil","Universidad"],[-33.04552,-71.61954,7,94,"Plaza Simón Bolívar","Parque"],[-33.04412,-71.61349,5,0,"Rectoría Universidad de Valparaíso","Universidad"],[-33.04403,-71.61403,5,0,"Escuela de Derecho Universidad de Valparaíso","Universidad"],[-33.04393,-71.61712,6,0,"Universidad de Valparaíso","Universidad"],[-33.04449,-71.61639,10,0,"Liceo Mixto Matilde Brandau de Ross","Colegio"],[-33.04413,-71.62263,10,253,"Parque Avenida Brasil","Parque"],[-33.04467,-71.6204,12,86,"Parque Avenida Brasil","Parque"],[-33.02713,-71.63833,65,706,"Universidad de Valparaíso - Facultad de Farmacia","Colegio"],[-33.0445,-71.61361,13,0,"Facultad de Ingeniería Pontificia Universidad Católica de Valparaíso","Universidad"],[-33.04448,-71.61494,10,24,"Escuela de Ingeniería Bioquímica PUCV","Universidad"],[-33.04358,-71.62088,7,80,"Liceo Bicentenario de Valparaíso","Colegio"],[-33.03908,-71.62744,11,243,"Universidad de Playa Ancha Edificio Calle Blanco","Universidad"],[-33.04401,-71.61661,7,0,"Escuela IICG","Universidad"],[-33.04391,-71.61759,5,0,"Prorectoría Universidad de Valparaíso","Universidad"],[-33.04517,-71.61815,11,1,"Facultad de Ingeniería Universidad de Valparaíso","Universidad"],[-33.04437,-71.61932,15,0,"Escuela de Teatro UV","Universidad"],[-33.04242,-71.62388,10,213,"Almirante Blanco Encalada","Parque"],[-33.04523,-71.62047,12,129,"Kinesiología Universidad de Valparaíso","Universidad"],[-33.04797,-71.61977,21,346,"Plaza de los Sueños","Parque"],[-33.04874,-71.61543,14,415,"Colegio de los Sagrados Corazones","Colegio"],[-33.05487,-71.57708,197,2769,"Escuela Básica D-314 Joaquín Edwards Bello","Colegio"],[-33.03819,-71.62998,13,476,"Facultad de Humanidades Universidad de Valparaíso","Universidad"],[-33.03881,-71.6304,44,515,"Plaza Museo del Mar","Parque"],[-33.02329,-71.64214,26,239,"Universidad de Playa Ancha Campus 2","Universidad"],[-33.05128,-71.6015,14,1135,"Escuela Básica Gaspar Cabrales","Colegio"],[-33.04687,-71.59655,124,1152,"Colegio Leonardo Murialdo Nadino","Colegio"],[-33.05916,-71.59941,47,1927,"Plaza Airola","Parque"],[-33.05828,-71.58477,115,2726,"Colegio Las Acacias","Colegio"],[-33.02342,-71.63655,45,299,"Colegio Patricio Lynch","Colegio"],[-33.0318,-71.63364,89,727,"Complejo Deportivo Habivalp","Recinto deportivo"],[-33.0365,-71.63232,30,719,"Centro de Educación Integrada de Adultos Valparaiso","Colegio"],[-33.05738,-71.59323,93,2162,"Escuela Juan José Latorre","Colegio"],[-33.06515,-71.58553,175,3276,"Escuela Primaria","Colegio"],[-33.06744,-71.59354,218,2997,"Escuela Eleuterio Ramírez","Colegio"],[-33.06403,-71.59797,183,2457,"Escuela Básica Jean Wacquez Mourfin","Colegio"],[-33.05693,-71.58952,175,2401,"Hospital Doctor Eduardo Pereira","Hospital"],[-33.03602,-71.63218,30,707,"","Recinto deportivo"],[-33.0425,-71.62481,28,257,"Instituto ITEP Valparaíso","Colegio"],[-33.04186,-71.62544,39,231,"Escuela Particular Windsor School","Colegio"],[-33.04524,-71.61665,14,8,"Colegio Paidos","Colegio"],[-33.04395,-71.61525,6,0,"Centro de Formación Técnica PUCV. Valparaiso","Instituto"],[-33.05221,-71.59552,71,1643,"","Parque"],[-33.04737,-71.61526,12,275,"Centro de Estudios San Ignacio","Colegio"],[-33.05302,-71.62602,135,1124,"Parque Liguria","Parque"],[-33.04906,-71.61087,13,442,"Centro Educacional Ceval y Compañía","Colegio"],[-33.02213,-71.64714,4,0,"","Parque"],[-33.05929,-71.60464,148,1708,"Plaza del recuerdo","Parque"],[-33.02166,-71.64261,7,109,"Hospital Psiquiátrico del Salvador","Hospital"],[-33.02103,-71.64154,23,188,"Universidad de Playa Ancha Campus 3","Universidad"],[-33.02023,-71.64108,17,221,"Universidad de Valparaíso (Facultad de Odontología)","Universidad"],[-33.02096,-71.64015,24,313,"Polideportivo Renato Raggio","Recinto deportivo"],[-33.0453,-71.59988,65,807,"Parque Escuela","Parque"],[-33.03012,-71.57689,37,844,"","Parque"],[-33.03146,-71.58811,15,0,"","Parque"],[-33.03112,-71.64571,156,591,"Centro Educativo Reino De Suecia","Colegio"],[-33.04924,-71.61412,12,458,"Colegio Arturo Edwards","Colegio"],[-33.04707,-71.58052,174,1843,"Juan Pablo II","Parque"],[-33.05995,-71.57523,245,3343,"Plaza Teodoro Jara - Barrio Rodelillo","Parque"],[-33.05201,-71.58241,182,2236,"","Parque"],[-33.04891,-71.62505,62,720,"Colegio Presbiteriano David Trumbull","Colegio"],[-33.0538,-71.59402,107,1857,"","Parque"],[-33.03127,-71.63764,121,963,"Colegio María Auxiliadora","Colegio"],[-33.03103,-71.63942,118,1021,"Colegio Católico Pre Militar Victor Antonio","Colegio"],[-33.02844,-71.63876,96,846,"Club Deportivo De Playa Ancha","Recinto deportivo"],[-33.03234,-71.63818,121,1074,"Colegio Guardiamarina Riquelme","Colegio"],[-33.03186,-71.63571,104,865,"Colegio San Vicente","Colegio"],[-33.04746,-71.59637,124,1209,"Colegio Leonardo Murialdo Nadino","Colegio"],[-33.04437,-71.58788,149,1252,"Escuela República del Paraguay","Colegio"],[-33.05182,-71.57124,241,2713,"Doctor Ernesto Quiroz Weber School","Colegio"],[-33.05468,-71.62891,197,1435,"Escuela San Judas Tadeo","Colegio"],[-33.03402,-71.63862,123,1227,"Colegio Alberto Hurtado Segundo","Colegio"],[-33.03359,-71.63856,123,1190,"Colegio Saint Thomas","Colegio"],[-33.03691,-71.64808,217,845,"Escuela Especial De Lenguaje Educatel","Colegio"],[-33.04048,-71.65218,176,565,"Escuela Carabinero Pedro Cariaga","Colegio"],[-33.03241,-71.58599,58,155,"Escuela de Lenguaje Palabrita","Colegio"],[-33.03516,-71.58275,94,583,"Colegio Esperanza","Colegio"],[-33.04617,-71.6323,122,1020,"","Parque"],[-33.04821,-71.58178,179,1926,"Colegio Particular San Pío X","Colegio"],[-33.03999,-71.64571,224,1148,"Escuela Mixta D262 América","Colegio"],[-33.04775,-71.65041,278,700,"Escuela Naciones Unidas","Colegio"],[-33.04462,-71.65192,214,579,"Club Deportivo Carlos Dittborn","Recinto deportivo"],[-33.02773,-71.58192,52,403,"Pontificia Universidad Católica De Valparaíso (Campus Recreo)","Universidad"],[-33.02616,-71.57271,15,1237,"Compañía de María","Colegio"],[-33.0283,-71.58454,46,151,"Colegio Friendly High School","Colegio"],[-33.03954,-71.59186,89,604,"English College Villa Placeres","Colegio"],[-33.05991,-71.57745,223,3220,"","Parque"],[-33.02904,-71.6375,85,827,"College Saint André","Colegio"],[-33.02876,-71.64877,107,217,"Escuela Pacífico","Colegio"],[-33.05378,-71.62264,117,1044,"La Sebastiana","Parque"],[-33.04446,-71.65143,228,620,"","Parque"],[-33.04728,-71.58239,179,1810,"Sede El Cincel","Centro comunitario"],[-33.05314,-71.58853,94,2061,"Parque Quintil","Parque"],[-33.0448,-71.61945,15,26,"Parque Avenida Brasil","Parque"],[-33.0445,-71.62144,10,162,"Parque Avenida Brasil","Parque"],[-33.04484,-71.61836,11,0,"Parque Avenida Brasil","Parque"],[-33.04487,-71.61736,11,0,"Parque Avenida Brasil","Parque"],[-33.04489,-71.61641,10,0,"Parque Avenida Brasil","Parque"],[-33.0449,-71.61521,11,44,"Parque Avenida Brasil","Parque"],[-33.04494,-71.6136,13,0,"Parque Avenida Brasil","Parque"],[-33.04488,-71.61133,7,0,"Parque Avenida Brasil","Parque"],[-33.04483,-71.60988,6,76,"Parque Avenida Brasil","Parque"],[-33.04477,-71.60845,6,184,"Parque Avenida Brasil","Parque"],[-33.04471,-71.60758,6,255,"Parque Avenida Brasil","Parque"],[-33.04442,-71.60633,10,355,"Parque Avenida Brasil","Parque"],[-33.05424,-71.60316,49,1279,"Colegio Seminario San Rafael - Sede Valparaíso","Colegio"],[-33.02239,-71.64654,22,0,"","Parque"],[-33.0533,-71.58681,112,2144,"Plaza Benjamin Franklin","Parque"],[-33.03754,-71.57083,173,1632,"Mirador Pablo Neruda","Parque"],[-33.04174,-71.56977,222,1971,"Plaza paradero #2","Parque"],[-33.0334,-71.57457,79,1128,"José Cortés Brown","Colegio"],[-33.05329,-71.6479,310,1097,"Escuela República de Siria","Colegio"],[-33.04994,-71.64658,306,1084,"","Parque"],[-33.05504,-71.64039,348,1812,"Escuela E-286 Montedónico","Colegio"],[-33.05313,-71.61583,104,886,"Escuela España","Colegio"],[-33.04247,-71.5763,179,1593,"Escuela Básica 21 de Mayo","Colegio"],[-33.04648,-71.62781,62,780,"Parque Cultural de Valparaíso","Parque"],[-33.04091,-71.6451,214,1213,"","Parque"],[-33.07,-71.6606,189,197,"","Punto en altura"],[-33.07,-71.6558,328,645,"","Punto en altura"],[-33.07,-71.651,365,1092,"","Punto en altura"],[-33.07,-71.6462,396,1539,"","Punto en altura"],[-33.07,-71.6414,422,1986,"","Punto en altura"],[-33.07,-71.6366,438,2434,"","Punto en altura"],[-33.07,-71.6318,439,2881,"","Punto en altura"],[-33.07,-71.627,406,2883,"","Punto en altura"],[-33.07,-71.6222,351,2785,"","Punto en altura"],[-33.07,-71.6174,296,2752,"","Punto en altura"],[-33.07,-71.6126,319,2752,"","Punto en altura"],[-33.07,-71.6078,319,2785,"","Punto en altura"],[-33.07,-71.603,232,2883,"","Punto en altura"],[-33.07,-71.5982,205,3039,"","Punto en altura"],[-33.07,-71.5934,258,3245,"","Punto en altura"],[-33.07,-71.5886,210,3494,"","Punto en altura"],[-33.0655,-71.6606,141,197,"","Punto en altura"],[-33.0655,-71.6558,238,645,"","Punto en altura"],[-33.0655,-71.651,372,1092,"","Punto en altura"],[-33.0655,-71.6462,405,1539,"","Punto en altura"],[-33.0655,-71.6414,402,1986,"","Punto en altura"],[-33.0655,-71.6366,426,2434,"","Punto en altura"],[-33.0655,-71.6318,431,2589,"","Punto en altura"],[-33.0655,-71.627,394,2407,"","Punto en altura"],[-33.0655,-71.6222,285,2292,"","Punto en altura"],[-33.0655,-71.6174,268,2252,"","Punto en altura"],[-33.0655,-71.6126,212,2252,"","Punto en altura"],[-33.0655,-71.6078,239,2292,"","Punto en altura"],[-33.0655,-71.603,215,2407,"","Punto en altura"],[-33.0655,-71.5982,228,2589,"","Punto en altura"],[-33.0655,-71.5934,192,2826,"","Punto en altura"],[-33.0655,-71.5886,122,3106,"","Punto en altura"],[-33.061,-71.6606,36,197,"","Punto en altura"],[-33.061,-71.6558,284,645,"","Punto en altura"],[-33.061,-71.651,357,1092,"","Punto en altura"],[-33.061,-71.6462,351,1539,"","Punto en altura"],[-33.061,-71.6414,361,1987,"","Punto en altura"],[-33.061,-71.6366,394,2434,"","Punto en altura"],[-33.061,-71.6318,352,2160,"","Punto en altura"],[-33.061,-71.627,256,1942,"","Punto en altura"],[-33.061,-71.6222,258,1801,"","Punto en altura"],[-33.061,-71.6174,195,1752,"","Punto en altura"],[-33.061,-71.6126,216,1752,"","Punto en altura"],[-33.061,-71.6078,207,1801,"","Punto en altura"],[-33.061,-71.603,169,1942,"","Punto en altura"],[-33.061,-71.5982,130,2160,"","Punto en altura"],[-33.061,-71.5934,128,2435,"","Punto en altura"],[-33.061,-71.5886,146,2752,"","Punto en altura"],[-33.0565,-71.6606,18,197,"","Punto en altura"],[-33.0565,-71.6558,198,645,"","Punto en altura"],[-33.0565,-71.651,267,1092,"","Punto en altura"],[-33.0565,-71.6462,326,1424,"","Punto en altura"],[-33.0565,-71.6414,335,1800,"","Punto en altura"],[-33.0565,-71.6366,310,2086,"","Punto en altura"],[-33.0565,-71.6318,255,1764,"","Punto en altura"],[-33.0565,-71.627,194,1498,"","Punto en altura"],[-33.0565,-71.6222,151,1316,"","Punto en altura"],[-33.0565,-71.6174,165,1251,"","Punto en altura"],[-33.0565,-71.6126,135,1251,"","Punto en altura"],[-33.0565,-71.6078,95,1316,"","Punto en altura"],[-33.0565,-71.603,65,1498,"","Punto en altura"],[-33.0565,-71.5982,108,1764,"","Punto en altura"],[-33.0565,-71.5934,103,2086,"","Punto en altura"],[-33.0565,-71.5886,137,2407,"","Punto en altura"],[-33.052,-71.6606,6,197,"","Punto en altura"],[-33.052,-71.6558,237,421,"","Punto en altura"],[-33.052,-71.651,279,775,"","Punto en altura"],[-33.052,-71.6462,323,1182,"","Punto en altura"],[-33.052,-71.6414,275,1608,"","Punto en altura"],[-33.052,-71.6366,249,1764,"","Punto en altura"],[-33.052,-71.6318,178,1424,"","Punto en altura"],[-33.052,-71.627,126,1092,"","Punto en altura"],[-33.052,-71.6222,106,846,"","Punto en altura"],[-33.052,-71.6174,92,751,"","Punto en altura"],[-33.052,-71.6126,24,751,"","Punto en altura"],[-33.052,-71.6078,20,846,"","Punto en altura"],[-33.052,-71.603,13,1092,"","Punto en altura"],[-33.052,-71.5982,61,1424,"","Punto en altura"],[-33.052,-71.5934,68,1764,"","Punto en altura"],[-33.052,-71.5886,91,1942,"","Punto en altura"],[-33.0475,-71.6558,177,197,"","Punto en altura"],[-33.0475,-71.651,253,645,"","Punto en altura"],[-33.0475,-71.6462,255,1092,"","Punto en altura"],[-33.0475,-71.6414,208,1540,"","Punto en altura"],[-33.0475,-71.6366,119,1424,"","Punto en altura"],[-33.0475,-71.6318,121,1092,"","Punto en altura"],[-33.0475,-71.627,72,775,"","Punto en altura"],[-33.0475,-71.6222,40,421,"","Punto en altura"],[-33.0475,-71.6174,12,250,"","Punto en altura"],[-33.0475,-71.6126,9,250,"","Punto en altura"],[-33.0475,-71.6078,12,421,"","Punto en altura"],[-33.0475,-71.603,11,775,"","Punto en altura"],[-33.0475,-71.5982,108,1092,"","Punto en altura"],[-33.0475,-71.5934,137,1316,"","Punto en altura"],[-33.0475,-71.5886,85,1498,"","Punto en altura"],[-33.043,-71.6558,109,197,"","Punto en altura"],[-33.043,-71.651,173,645,"","Punto en altura"],[-33.043,-71.6462,210,1092,"","Punto en altura"],[-33.043,-71.6414,155,1540,"","Punto en altura"],[-33.043,-71.6366,114,1183,"","Punto en altura"],[-33.043,-71.6318,74,775,"","Punto en altura"],[-33.043,-71.627,59,421,"","Punto en altura"],[-33.043,-71.6222,7,197,"","Punto en altura"],[-33.043,-71.6078,5,197,"","Punto en altura"],[-33.043,-71.603,51,421,"","Punto en altura"],[-33.043,-71.5982,100,751,"","Punto en altura"],[-33.043,-71.5934,46,846,"","Punto en altura"],[-33.043,-71.5886,124,1092,"","Punto en altura"],[-33.0385,-71.6558,78,197,"","Punto en altura"],[-33.0385,-71.651,138,645,"","Punto en altura"],[-33.0385,-71.6462,226,1092,"","Punto en altura"],[-33.0385,-71.6414,158,1424,"","Punto en altura"],[-33.0385,-71.6366,91,1092,"","Punto en altura"],[-33.0385,-71.6318,30,645,"","Punto en altura"],[-33.0385,-71.627,11,197,"","Punto en altura"],[-33.0385,-71.603,9,197,"","Punto en altura"],[-33.0385,-71.5982,17,250,"","Punto en altura"],[-33.0385,-71.5934,70,421,"","Punto en altura"],[-33.0385,-71.5886,86,751,"","Punto en altura"],[-33.034,-71.6558,88,197,"","Punto en altura"],[-33.034,-71.651,123,421,"","Punto en altura"],[-33.034,-71.6462,156,775,"","Punto en altura"],[-33.034,-71.6414,150,1093,"","Punto en altura"],[-33.034,-71.6366,99,1092,"","Punto en altura"],[-33.034,-71.6318,44,645,"","Punto en altura"],[-33.034,-71.627,5,197,"","Punto en altura"],[-33.034,-71.5934,6,197,"","Punto en altura"],[-33.034,-71.5886,13,250,"","Punto en altura"],[-33.0295,-71.651,99,197,"","Punto en altura"],[-33.0295,-71.6462,121,421,"","Punto en altura"],[-33.0295,-71.6414,110,775,"","Punto en altura"],[-33.0295,-71.6366,95,775,"","Punto en altura"],[-33.0295,-71.6318,80,421,"","Punto en altura"],[-33.0295,-71.627,5,197,"","Punto en altura"],[-33.025,-71.6462,46,198,"","Punto en altura"],[-33.025,-71.6414,44,421,"","Punto en altura"],[-33.025,-71.6366,51,421,"","Punto en altura"],[-33.025,-71.6318,7,198,"","Punto en altura"],[-33.0205,-71.6414,17,198,"","Punto en altura"],[-33.0205,-71.6366,5,198,"","Punto en altura"]];
+// Cotas (m) de la grilla del sorteo (9×11) y de la grilla de zonas (13×19), en el orden de la página
+const VALPO_SORTEO=[354,357,391,383,351,298,246,188,220,157,107,288,337,359,310,224,193,134,154,135,110,49,310,294,297,225,138,117,96,92,32,47,18,306,260,168,147,87,74,28,13,13,15,62,237,193,128,109,80,16,9,5,8,12,90,197,176,126,33,22,0,0,0,0,5,46,150,172,130,71,7,0,0,0,0,0,0,155,108,117,83,22,0,0,0,0,0,0,57,56,59,55,0,0,0,0,0,0,0];
+const VALPO_GRILLA=[0,0,0,189,328,365,396,422,438,439,406,351,296,319,319,232,205,258,210,0,0,0,141,238,372,405,402,426,431,394,285,268,212,239,215,228,192,122,0,0,0,36,284,357,351,361,394,352,256,258,195,216,207,169,130,128,146,0,0,0,18,198,267,326,335,310,255,194,151,165,135,95,65,108,103,137,0,0,0,6,237,279,323,275,249,178,126,106,92,24,20,13,61,68,91,0,0,0,0,177,253,255,208,119,121,72,40,12,9,12,11,108,137,85,0,0,0,0,109,173,210,155,114,74,59,7,0,0,5,51,100,46,124,0,0,0,0,78,138,226,158,91,30,11,0,0,0,0,9,17,70,86,0,0,0,0,88,123,156,150,99,44,5,0,0,0,0,0,0,6,13,0,0,0,0,0,99,121,110,95,80,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,46,44,51,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,17,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+/*</DATOS>*/
+</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const html=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Registro de errores para la verificación automática (no reemplaza a la consola)
+window.__dmkErrores=[];
+addEventListener('error',e=>window.__dmkErrores.push(String(e.message||e)));
+addEventListener('unhandledrejection',e=>window.__dmkErrores.push('Promesa sin manejar: '+String(e.reason&&e.reason.message||e.reason)));
+if(typeof L==='undefined'||!ALUVION_EJE){
+  const m='<p class="err">No se pudo cargar el mapa. Abra este archivo en Chrome o Safari (no en el visor de la app) y revise su conexión a internet.</p>';
+  $('inicio').insertAdjacentHTML('afterbegin',m);$('map').innerHTML=m;
+  document.querySelectorAll('[data-esc],#iniDesp').forEach(b=>b.disabled=true);
+}else main();
+
+function main(){
+/* =====================================================================================
+   NÚCLEO COMÚN: estado, red, rutas, sonido, voz, mapa, alerta SAE, SOS, despacho, diagnóstico.
+   Los escenarios (más abajo) son objetos de configuración con la interfaz descrita en
+   "INTERFAZ DE ESCENARIO". El núcleo no conoce los detalles de ningún escenario.
+   ===================================================================================== */
+const ST={esc:null,me:null,cur:0,LOCS:[],active:false,seq:0,params:null,res:null,ac:null,timers:new Set(),fase2:false,pmr:false};
+const V_KMH_MARCHA=4.3,V_KMH_PMR=3;          // velocidades de marcha (km/h): normal y movilidad reducida
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const largo=t=>[...t].length;                // caracteres (no bytes) del texto SAE
+const pad=n=>String(n).padStart(2,'0');
+const fmt1=x=>(Math.round(x*10)/10).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1});
+const minTxt=m=>m<1?'menos de 1 min':(m<10?fmt1(m):String(Math.round(m)))+' min';
+const horaReal=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())};
+function later(fn,ms){const t=setTimeout(()=>{ST.timers.delete(t);fn()},ms);ST.timers.add(t);return t}
+function opts(){return{pmr:ST.pmr,snd:$('snd').checked}}
+const vMarcha=o=>o.pmr?V_KMH_PMR:V_KMH_MARCHA;
+function zst(t,S){if(S&&S!==ST.esc)return;$('zst').textContent=t}
+
+/* ---------- Red: tiempo límite, cancelación al cambiar de escenario, reintentos suaves ---------- */
+function fetchT(u,ms,opt){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),ms),sc=ST.ac,ab=()=>c.abort();
+  if(sc)sc.signal.addEventListener('abort',ab);
+  return fetch(u,Object.assign({},opt,{signal:c.signal})).finally(()=>{clearTimeout(t);if(sc)sc.signal.removeEventListener('abort',ab)})}
+async function getJSON(u,n,ms){
+  const sc=ST.ac;n=n||2;
+  for(let i=0;i<n;i++){
+    try{const r=await fetchT(u,ms||8000);if(r.ok)return await r.json()}catch(e){}
+    if(sc&&sc.signal.aborted)break;
+    if(i<n-1)await sleep(400*(i+1))}
+  throw new Error('sin respuesta')}
+function conPlazo(p,ms){return new Promise((ok,ko)=>{const t=setTimeout(()=>ko(new Error('tiempo agotado')),ms);p.then(v=>{clearTimeout(t);ok(v)},e=>{clearTimeout(t);ko(e)})})}
+// Espejos de Overpass con CORS para navegadores (overpass.openstreetmap.fr responde 403 a páginas web: solo se usa en tools/)
+const OV=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+async function ov(q,etq){
+  let err='sin respuesta';const sc=ST.ac;
+  for(const u of OV){
+    try{const r=await fetchT(u+'?data='+encodeURIComponent(q),12000);
+      if(r.ok){const j=await r.json();if(j&&j.elements)return j;err='respuesta vacía'}else err='error '+r.status}
+    catch(e){err='sin respuesta o tiempo agotado'}
+    if(sc&&sc.signal.aborted)break}
+  throw new Error(etq+': '+err)}
+async function elevAll(pts){   // Open-Meteo: lotes de 100, 3 en paralelo
+  const out=new Array(pts.length);
+  for(let i=0;i<pts.length;i+=300){
+    await Promise.all([0,100,200].map(async o=>{
+      const s=pts.slice(i+o,i+o+100);if(!s.length)return;
+      const j=await getJSON('https://api.open-meteo.com/v1/elevation?latitude='+s.map(p=>p.lat.toFixed(5)).join(',')+'&longitude='+s.map(p=>p.lng.toFixed(5)).join(','),3,8000);
+      if(!j.elevation||j.elevation.length!==s.length)throw new Error('cota incompleta');
+      s.forEach((_,k)=>out[i+o+k]=j.elevation[k])}))}
+  return out}
+
+/* ---------- Motor de rutas con respaldos (Valhalla, OSRM a pie, OSRM vehicular) ---------- */
+const OSRM='https://routing.openstreetmap.de/routed-foot/';
+const VALHALLA='https://valhalla1.openstreetmap.de/';
+function dec(s,k){let i=0,la=0,lo=0;const o=[];
+  while(i<s.length){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);la+=(r&1)?~(r>>1):(r>>1);
+    sh=0;r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lo+=(r&1)?~(r>>1):(r>>1);o.push([la/k,lo/k])}
+  return o}
+function callesOSRM(R){const n=[];(R.legs||[]).forEach(l=>(l.steps||[]).forEach(s=>{const x=(s.name||'').trim();if(x&&n[n.length-1]!==x)n.push(x)}));return n}
+function callesVH(g){const n=[];(g.maneuvers||[]).forEach(m=>{const x=(m.street_names||[])[0];if(x&&n[n.length-1]!==x)n.push(x)});return n}
+async function valhalla(ep,body,ms){
+  // POST con text/plain: evita la consulta CORS previa; Valhalla lee el JSON del cuerpo.
+  const r=await fetchT(VALHALLA+ep,ms||9000,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(body)});
+  let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok||!j){const e=new Error(j&&j.error?j.error:'Valhalla '+r.status);e.http=r.status;throw e}
+  return j}
+// Movilidad reducida: perfil "wheelchair" (evita escaleras); si no hay ruta, se reintenta penalizando escalones.
+function costoPeaton(pmr,conPasos){return pmr?(conPasos?{step_penalty:900,walking_speed:V_KMH_PMR}:{type:'wheelchair',step_penalty:900,walking_speed:V_KMH_PMR}):{walking_speed:V_KMH_MARCHA}}
+async function rutaValhalla(a,b,o){
+  const body={locations:[{lat:a.lat,lon:a.lng},{lat:b.lat,lon:b.lng}],costing:'pedestrian',costing_options:{pedestrian:costoPeaton(o.pmr)},directions_options:{language:'es-ES'}};
+  if(o.excl)body.exclude_polygons=o.excl;
+  let j,pasos=false;
+  try{j=await valhalla('route',body)}catch(e){
+    if(!o.pmr||!e.http)throw e;
+    body.costing_options.pedestrian=costoPeaton(true,true);pasos=true;j=await valhalla('route',body)}
+  const g=j.trip.legs[0];
+  return{pts:dec(g.shape,1e6),km:j.trip.summary.length,names:callesVH(g),fuente:'Valhalla',pasos}}
+async function matrizValhalla(a,dests,o){
+  const body={sources:[{lat:a.lat,lon:a.lng}],targets:dests.map(d=>({lat:d.lat,lon:d.lng})),costing:'pedestrian',costing_options:{pedestrian:costoPeaton(o.pmr)}};
+  if(o.excl)body.exclude_polygons=o.excl;
+  let j;try{j=await valhalla('sources_to_targets',body)}catch(e){if(!o.pmr||!e.http)throw e;body.costing_options.pedestrian=costoPeaton(true,true);j=await valhalla('sources_to_targets',body)}
+  return j.sources_to_targets[0].map(c=>c.distance==null?null:c.distance)}
+async function rutasOSRM(a,b,alt){
+  const r=await getJSON(OSRM+'route/v1/foot/'+a.lng+','+a.lat+';'+b.lng+','+b.lat+'?overview=full&geometries=geojson&steps=true'+(alt?'&alternatives=true':''),2,8000);
+  return(r.routes||[]).map(R=>({pts:R.geometry.coordinates.map(c=>[c[1],c[0]]),km:R.distance/1000,names:callesOSRM(R),fuente:'OSRM'}))}
+async function rutaVehOSRM(a,b){
+  const r=await getJSON('https://router.project-osrm.org/route/v1/driving/'+a.lng+','+a.lat+';'+b.lng+','+b.lat+'?overview=full&geometries=geojson&steps=true',1,8000);
+  if(!r.routes||!r.routes[0])throw new Error('sin ruta');
+  const R=r.routes[0];return{pts:R.geometry.coordinates.map(c=>[c[1],c[0]]),km:R.distance/1000,names:callesOSRM(R),fuente:'OSRM vehicular',veh:true}}
+// Tiempo a pie: distancia ÷ velocidad de marcha (4,3 o 3 km/h). Mismo criterio para todos los servicios.
+const conTiempo=(r,o)=>(r.min=r.km/vMarcha(o)*60,r);
+const gmaps=(a,b)=>'https://www.google.com/maps/dir/?api=1&origin='+a.lat.toFixed(6)+','+a.lng.toFixed(6)+'&destination='+b.lat.toFixed(6)+','+b.lng.toFixed(6)+'&travelmode=walking';
+
+/* ---------- Alarma sonora y vibración (misma alarma del simulador original) ---------- */
+let AC=null,tmr=null;
+function stopSound(){try{if(AC){const p=AC.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}AC=null;clearTimeout(tmr);if(navigator.vibrate)navigator.vibrate(0);$('mute').hidden=true;$('saeMute').disabled=true;$('saeMute').textContent='Alarma silenciada'}
+function beep(){
+  if(!$('snd').checked)return;
+  stopSound();
+  try{const C=AC=new(window.AudioContext||window.webkitAudioContext)(),g=C.createGain();g.gain.value=.5;g.connect(C.destination);
+    let t=C.currentTime+.05;
+    for(let i=0;i<7;i++){
+      [853,960].forEach(f=>{const o=C.createOscillator(),v=C.createGain();o.type='square';o.frequency.value=f;v.gain.value=.35;o.connect(v);v.connect(g);o.start(t);o.stop(t+.6)});
+      t+=.85}
+    for(let i=0;i<8;i++){
+      const o=C.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(650,t);o.frequency.linearRampToValueAtTime(1350,t+.6);o.frequency.linearRampToValueAtTime(650,t+1.2);
+      o.connect(g);o.start(t);o.stop(t+1.2);t+=1.2}
+    tmr=setTimeout(stopSound,(t-C.currentTime)*1000+300);$('mute').hidden=false;$('saeMute').disabled=false;$('saeMute').textContent='🔇 Silenciar';
+    if(navigator.vibrate)navigator.vibrate(Array(14).fill([700,300]).flat());
+  }catch(e){}
+}
+
+/* ---------- Lectura por voz (es-CL o, si no hay, otra voz en español) ---------- */
+let VOCES=[];
+const hayVoz='speechSynthesis' in window;
+function cargarVoces(){try{VOCES=speechSynthesis.getVoices()||[]}catch(e){}}
+if(hayVoz){cargarVoces();try{speechSynthesis.onvoiceschanged=cargarVoces}catch(e){}}
+const vozES=()=>VOCES.find(v=>/^es[-_]CL/i.test(v.lang))||VOCES.find(v=>/^es[-_](419|US|MX|AR|CO|PE)/i.test(v.lang))||VOCES.find(v=>/^es/i.test(v.lang))||null;
+function hablar(t){
+  if(!hayVoz){$('leer').textContent='Lectura por voz no disponible en este navegador';return}
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t),v=vozES();if(v){u.voice=v;u.lang=v.lang}else u.lang='es-CL';u.rate=.95;speechSynthesis.speak(u)}catch(e){}}
+function callar(){try{if(hayVoz)speechSynthesis.cancel()}catch(e){}}
+
+/* ---------- Tamaño de letra ---------- */
+const FS=[87.5,100,112.5,125,140];let fsi=1;
+try{const v=localStorage.getItem('dmk_fs');if(v!==null&&FS[+v])fsi=+v}catch(e){}
+function aplicarFS(){document.documentElement.style.fontSize=FS[fsi]+'%';try{localStorage.setItem('dmk_fs',fsi)}catch(e){}
+  $('fmen').disabled=fsi===0;$('fmas').disabled=fsi===FS.length-1;if(map)setTimeout(()=>map.invalidateSize(),60)}
+
+/* ---------- Mapa ---------- */
+let map=null,tl=null,ti=0,capaEsc=null,capaRes=null,mMe=null;
+const T=[['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}','Mapa © Esri y colaboradores de OpenStreetMap'],
+ ['https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap'],
+ ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','Imágenes © Esri']];
+const pin=(t,c)=>L.divIcon({className:'',html:'<div class="pin '+(c||'')+'">'+t+'</div>',iconSize:[0,0]});
+function tiles(i){if(tl)tl.remove();ti=i;tl=L.tileLayer(T[i][0],{maxZoom:19,attribution:T[i][1]}).addTo(map)}
+function initMap(){
+  map=L.map('map',{zoomControl:false,minZoom:12});
+  L.control.zoom({position:'topright',zoomInTitle:'Acercar',zoomOutTitle:'Alejar'}).addTo(map);
+  tiles(0);
+  capaEsc=L.layerGroup().addTo(map);capaRes=L.layerGroup().addTo(map);
+  mMe=L.marker([0,0],{icon:pin('Tú'),draggable:true,zIndexOffset:1000,title:'Su ubicación simulada (arrástrela para moverla)'}).addTo(map);
+  mMe.on('dragend',()=>{ST.cur=-1;chips();moveMe(mMe.getLatLng())});
+  map.on('click',e=>{ST.cur=-1;chips();moveMe(e.latlng)});
+  addEventListener('resize',()=>map.invalidateSize());
+}
+function chips(){
+  document.querySelectorAll('#locs [data-i]').forEach(b=>{const on=+b.dataset.i===ST.cur;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});
+  const S=ST.esc;if(!S||!ST.me)return;
+  const n=ST.cur>=0&&ST.LOCS[ST.cur]?'Ubicación '+(ST.cur+1)+' · '+ST.LOCS[ST.cur].nombre:'Ubicación elegida en el mapa';
+  const e=S.etiqueta?S.etiqueta(ST.me):'';
+  $('locname').textContent=n+(e&&!n.toLowerCase().includes(e.toLowerCase().split(' ')[0])?' · '+e:'')}
+function moveMe(ll){ST.me=L.latLng(ll);mMe.setLatLng(ST.me);chips();if(ST.active)evaluar()}
+function sel(i){ST.cur=i;moveMe(ST.LOCS[i].ll);if(!ST.active)map.setView(ST.me,ST.esc.zoom)}
+async function sortear(){
+  const S=ST.esc;$('dice').disabled=true;
+  let n=null;try{n=await S.sortear()}catch(e){}
+  $('dice').disabled=false;
+  if(S!==ST.esc)return;
+  if(n&&n.length===3)ST.LOCS=n.map(u=>({nombre:u.nombre,ll:L.latLng(u.ll)}));
+  sel(0)}
+
+/* ---------- Ciclo de vida de un escenario ---------- */
+function abrirEscenario(id){
+  const S=SCENARIOS[id];if(!S)return;
+  cerrarEscenario();
+  ST.esc=S;ST.ac=new AbortController();ST.seq++;ST.active=false;ST.fase2=false;ST.res=null;
+  $('inicio').hidden=true;$('esc').hidden=false;$('home').hidden=false;$('bartit').textContent='· '+S.titulo;
+  try{history.replaceState(null,'','#'+S.id)}catch(e){}
+  $('params').innerHTML=S.formHTML();$('nota').innerHTML=S.nota();
+  $('fase2').hidden=!S.fase2;
+  vistaAlerta(false);$('dg').hidden=true;
+  if(!map)initMap();
+  map.setMaxBounds(null);map.setMinZoom(S.minZoom);map.setView(S.centro,S.zoom,{animate:false});map.setMaxBounds(S.bounds);
+  map.options.maxBoundsViscosity=1;
+  $('ley').innerHTML=S.leyenda();
+  S.init(capaEsc);
+  ST.LOCS=S.ubicaciones.map(u=>({nombre:u.nombre,ll:L.latLng(u.ll)}));
+  sel(0);syncToggles();
+  setTimeout(()=>map.invalidateSize(),80);
+}
+function cerrarEscenario(){
+  const S=ST.esc;if(!S)return;
+  ST.seq++;if(ST.ac)ST.ac.abort();
+  stopSound();callar();
+  ST.timers.forEach(clearTimeout);ST.timers.clear();
+  if(S.destroy)S.destroy();
+  capaEsc.clearLayers();capaRes.clearLayers();
+  ST.active=false;ST.res=null;ST.fase2=false;ST.esc=null;
+  ['sae','sosm'].forEach(k=>$(k).hidden=true);
+  vistaAlerta(false);$('ley').hidden=true;$('bley').setAttribute('aria-expanded','false');
+}
+function irInicio(){cerrarEscenario();$('esc').hidden=true;$('inicio').hidden=false;$('home').hidden=true;$('bartit').textContent='· Simulador de alertas';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+function vistaAlerta(on){$('form').hidden=on;$('sum').hidden=!on;$('esc').classList.toggle('alerta',on);$('sos').hidden=!on;if(map)setTimeout(()=>map.invalidateSize(),60)}
+function syncToggles(){const b=$('tpmr');b.setAttribute('aria-pressed',ST.pmr);b.innerHTML='♿ Movilidad reducida: <b>'+(ST.pmr?'Sí':'No')+'</b>'}
+
+/* ---------- Emitir alerta, evaluar y pintar ---------- */
+function emitir(){
+  const S=ST.esc;if(!S)return;
+  const p=S.leerForm();if(!p)return;
+  ST.params=p;ST.active=true;ST.fase2=false;$('fase2').textContent='Fase 2: después';
+  if(S.amenaza(p)){beep();mostrarSAE(S,p)}          // beep() dentro del gesto del usuario (requisito de iOS/Chrome)
+  vistaAlerta(true);$('panel').scrollTop=0;
+  evaluar();
+}
+async function evaluar(){
+  const S=ST.esc;if(!S||!ST.me)return;
+  const my=++ST.seq;capaRes.clearLayers();
+  const ctx={my,ok:()=>my===ST.seq&&ST.esc===S,params:ST.params,opts:opts(),capa:capaRes,fase2:ST.fase2,cur:ST.cur,me:ST.me};
+  ctx.parcial=r=>{if(ctx.ok())pintar(r,true)};
+  let res=null;
+  try{res=await S.evaluar(L.latLng(ST.me),ctx)}catch(e){
+    if(!ctx.ok())return;
+    window.__dmkErrores.push('evaluar: '+(e&&e.message||e));
+    res={nivel:'gris',banner:'NO SE PUDO EVALUAR',instr:['Reintente en unos segundos.'],det:'<span class="warn">'+html(e&&e.message||e)+'</span>',reintentar:true}}
+  if(!res||!ctx.ok())return;
+  res._seq=my;ST.res=res;pintar(res,false);
+}
+function pintar(r,parcial){
+  const b=$('banner');b.className=r.nivel==='rojo'?'':r.nivel;
+  b.innerHTML=(r.icono?'<span aria-hidden="true">'+r.icono+'</span> ':'')+html(r.banner);
+  $('ev').innerHTML=r.ev||'';
+  $('instr').innerHTML=(r.instr||[]).map(t=>'<li>'+html(t)+'</li>').join('');
+  $('det').innerHTML=(r.avisos||[]).map(a=>'<div class="aviso">'+html(a)+'</div>').join('')+(r.det||'')+
+    (r.gm?'<br><a class="btn" href="'+r.gm+'" target="_blank" rel="noopener">Abrir la ruta a pie en Google Maps</a>':'')+(r.reintentar?' <button type="button" id="retry">Reintentar</button>':'');
+  $('evitar').innerHTML=r.evitar&&r.evitar.length?'<div class="k" style="margin-top:.4rem">Evite estas calles:</div>'+r.evitar.map(e=>'<span class="chip">⛔ '+html(e)+'</span>').join(''):'';
+  $('ru').innerHTML=r.ru||'';
+  $('pmrq').hidden=!r.preguntaPMR;
+  $('sos').classList.toggle('destacado',!!r.sos);
+  if($('retry'))$('retry').onclick=()=>evaluar();
+  if(parcial)return;
+  const R=r.ruta,me=L.latLng(ST.me);
+  if(R&&R.pts&&R.pts.length>1){
+    const ln=L.polyline(R.pts,R.flecha?{color:'#1c6fe0',weight:6,dashArray:'10 9',opacity:.95}:{color:'#1c6fe0',weight:7,opacity:.92}).addTo(capaRes);
+    if(R.flecha){const a=R.pts[R.pts.length-2],z=R.pts[R.pts.length-1],ang=Math.atan2(z[1]-a[1],z[0]-a[0])*180/Math.PI;
+      L.marker(z,{icon:L.divIcon({className:'',html:'<span class="flecha" style="transform:translate(-50%,-50%) rotate('+(ang-90).toFixed(0)+'deg)">➤</span>',iconSize:[0,0]}),interactive:false}).addTo(capaRes)}
+    if(R.salidaLL)L.circleMarker(R.salidaLL,{radius:7,color:'#fff',weight:3,fillColor:'#1c6fe0',fillOpacity:1}).bindTooltip('Aquí sale de la zona roja').addTo(capaRes);
+    if(R.dest)L.marker(R.dest.ll,{icon:pin(R.dest.etiqueta||'Zona segura','ok'),title:R.dest.nombre||'Zona segura'}).addTo(capaRes);
+    map.fitBounds(ln.getBounds().extend(me).extend(R.dest?R.dest.ll:me),{padding:[45,45],maxZoom:ST.esc.zoomRuta||17});
+  }else if(R&&R.dest){
+    L.marker(R.dest.ll,{icon:pin('Zona segura','ok')}).addTo(capaRes);map.fitBounds(L.latLngBounds([me,R.dest.ll]),{padding:[45,45]});
+  }else map.setView(me,Math.max(map.getZoom(),ST.esc.zoom));
+}
+
+/* ---------- Pantalla de alerta SAE simulada ---------- */
+function mostrarSAE(S,p){
+  const s=S.sae(p),n=largo(s.texto);
+  $('saeTxt').textContent=s.texto;$('saeLink').textContent=s.enlace;
+  $('saeCnt').textContent=n+'/90 caracteres';$('saeCnt').classList.toggle('warn',n>90);
+  $('saeEsc').textContent=S.titulo;$('saeHora').textContent=S.horaAlerta?S.horaAlerta():horaReal();
+  $('sae').hidden=false;setTimeout(()=>$('saeVer').focus(),30);
+}
+function validarSAE(){
+  return Object.values(SCENARIOS).map(S=>{const t=S.sae(null).texto,n=largo(t);
+    if(n>90)console.warn('Texto SAE de "'+S.titulo+'" supera 90 caracteres ('+n+'): '+t);
+    return{esc:S.titulo,n,ok:n<=90,t}})}
+
+/* ---------- SOS y Centro de Despacho (todo en memoria, sin backend) ---------- */
+const SOS=[];let sosSeq=0,sosTipo=null;
+const TIPOS_SOS=[['movilidad','No puedo moverme / movilidad reducida'],['vivienda','Atrapado en vivienda'],['vehiculo','Atrapado en vehículo'],['herido','Herido'],['otro','Otro']];
+const tipoTxt=k=>(TIPOS_SOS.find(t=>t[0]===k)||['',k])[1];
+// P1: movilidad reducida o atrapado (vivienda/vehículo) en zona roja · P2: herido · P3: el resto
+function prioridadSOS(tipo,enRoja){return(['movilidad','vivienda','vehiculo'].includes(tipo)&&enRoja)?1:tipo==='herido'?2:3}
+function crearSOS(S,ll,tipo,personas,hora,ejemplo){
+  const enRoja=S.enZonaRoja(ll,ejemplo);
+  const r={id:++sosSeq,esc:S.id,escT:S.titulo,ll:L.latLng(ll),hora:hora||new Date(),tipo,personas:personas||null,prioridad:prioridadSOS(tipo,enRoja),zona:S.zonaTexto(ll,ejemplo),ejemplo:!!ejemplo};
+  SOS.push(r);return r}
+$('sosTipos').innerHTML=TIPOS_SOS.map(t=>'<label class="opt"><input type="radio" name="sosTipo" value="'+t[0]+'"> '+t[1]+'</label>').join('');
+function sosPaso(n){['sos1','sos2','sos3'].forEach((k,i)=>$(k).hidden=i!==n-1)}
+function abrirSOS(){if(!ST.esc)return;sosPaso(1);$('sosErr').textContent='';$('sosPers').value='';document.querySelectorAll('input[name=sosTipo]').forEach(i=>i.checked=false);$('sosm').hidden=false;setTimeout(()=>document.querySelector('input[name=sosTipo]').focus(),30)}
+$('sos').onclick=abrirSOS;
+$('sosNext').onclick=()=>{
+  const t=document.querySelector('input[name=sosTipo]:checked');if(!t){$('sosErr').textContent='Elija qué le pasa.';return}
+  sosTipo=t.value;const n=+$('sosPers').value;
+  $('sosRes').innerHTML='<b>'+html(tipoTxt(sosTipo))+'</b>'+(n>0?' · '+n+' persona'+(n>1?'s':''):'')+'<br>Ubicación: '+ST.me.lat.toFixed(5)+', '+ST.me.lng.toFixed(5)+' · '+html(ST.esc.zonaTexto(ST.me));
+  sosPaso(2);$('sosSend').focus()};
+$('sosBack').onclick=()=>sosPaso(1);
+$('sosSend').onclick=()=>{const n=+$('sosPers').value;const r=crearSOS(ST.esc,ST.me,sosTipo,n>0?Math.round(n):null);
+  $('sosPri').textContent='Prioridad asignada en el Centro de Despacho simulado: P'+r.prioridad+'.';sosPaso(3);$('sosOk').focus();if(!$('desp').hidden)pintarDespacho()};
+const cerrarSOS=()=>{$('sosm').hidden=true;$('sos').focus()};
+$('sosOk').onclick=cerrarSOS;$('sosX').onclick=cerrarSOS;$('sosCan').onclick=cerrarSOS;
+$('sosVer').onclick=()=>{$('sosm').hidden=true;abrirDespacho(ST.esc&&ST.esc.id)};
+
+let mapD=null,capaDZ=null,capaDP=null,escD=null;
+function abrirDespacho(id){
+  $('desp').hidden=false;
+  if(!mapD){mapD=L.map('mapD',{zoomControl:false});L.control.zoom({position:'topright'}).addTo(mapD);L.tileLayer(T[0][0],{maxZoom:19,attribution:T[0][1]}).addTo(mapD);capaDZ=L.layerGroup().addTo(mapD);capaDP=L.layerGroup().addTo(mapD)}
+  escD=SCENARIOS[id]||ST.esc||escD||SCENARIOS.aluvion_lascondes;
+  document.querySelectorAll('[data-desc]').forEach(b=>{const on=b.dataset.desc===escD.id;b.classList.toggle('big',on);b.setAttribute('aria-pressed',on)});
+  capaDZ.clearLayers();escD.capasDespacho(capaDZ);
+  mapD.setView(escD.centro,escD.zoom-1,{animate:false});
+  setTimeout(()=>mapD.invalidateSize(),80);pintarDespacho();$('despX').focus();
+}
+function pintarDespacho(){
+  if(!capaDP)return;capaDP.clearLayers();
+  const now=Date.now(),L1=SOS.slice().sort((a,b)=>a.prioridad-b.prioridad||a.hora-b.hora);
+  $('despList').innerHTML=L1.length?L1.map(r=>{const m=Math.max(0,Math.round((now-r.hora)/60000));
+    return '<button type="button" class="req" data-id="'+r.id+'"><span class="pr p'+r.prioridad+'">P'+r.prioridad+'</span><span><b>'+html(tipoTxt(r.tipo))+'</b>'+(r.personas?' · '+r.personas+' pers.':'')+'<br><span class="k">'+pad(r.hora.getHours())+':'+pad(r.hora.getMinutes())+' (hace '+m+' min) · '+html(r.zona)+' · '+html(r.escT)+(r.ejemplo?' · ejemplo':'')+'</span></span></button>'}).join(''):'<p class="sm">Sin solicitudes. Use el botón SOS en la vista de alerta o genere ejemplos.</p>';
+  L1.filter(r=>r.esc===escD.id).forEach(r=>L.marker(r.ll,{icon:L.divIcon({className:'',html:'<span class="sosPin p'+r.prioridad+'">P'+r.prioridad+'</span>',iconSize:[0,0]}),title:'P'+r.prioridad+' · '+tipoTxt(r.tipo)}).bindTooltip('P'+r.prioridad+' · '+html(tipoTxt(r.tipo))).addTo(capaDP));
+  document.querySelectorAll('#despList .req').forEach(b=>b.onclick=()=>{const r=SOS.find(x=>x.id===+b.dataset.id);if(!r)return;if(r.esc!==escD.id)abrirDespacho(r.esc);mapD.setView(r.ll,17)});
+}
+$('despGen').onclick=()=>{const now=Date.now();const W=['movilidad','vivienda','vivienda','vehiculo','herido','herido','otro'];
+  escD.ejemplosSOS(15).forEach(ll=>crearSOS(escD,ll,W[Math.floor(Math.random()*W.length)],1+Math.floor(Math.random()*4),new Date(now-Math.random()*25*60000),true));pintarDespacho()};
+$('despClr').onclick=()=>{SOS.length=0;pintarDespacho()};
+$('despX').onclick=()=>{$('desp').hidden=true};
+document.querySelectorAll('[data-desc]').forEach(b=>b.onclick=()=>abrirDespacho(b.dataset.desc));
+
+/* ---------- Acerca de esta simulación ---------- */
+function abrirAcerca(){
+  $('acBody').innerHTML='<p>DIMARKA es un proyecto estudiantil (Ingeniería Civil Industrial UV y Arquitectura U. de Chile) que propone ampliar el Sistema de Alerta de Emergencia (SAE, Cell Broadcast): el mensaje llevaría la acción esencial y un <b>enlace liviano, sin instalar ninguna app</b>, con el nivel de riesgo, un mapa, una ruta accesible y un botón de ayuda geolocalizado.</p>'+
+  '<p><b>Esto es una simulación no oficial.</b> No usa logos ni datos de SENAPRED ni de otras instituciones. Los enlaces SAE son de ejemplo (dominio reservado <i>.example</i>). El botón SOS y el Centro de Despacho no envían nada a ningún servicio real.</p>'+
+  Object.values(SCENARIOS).map(S=>'<h3>'+html(S.titulo)+'</h3>'+S.acercaHTML()).join('')+
+  '<h3>Supuestos comunes</h3><ul><li>Velocidad de marcha: '+fmt1(V_KMH_MARCHA)+' km/h; con movilidad reducida: '+fmt1(V_KMH_PMR)+' km/h (y se evitan escaleras cuando hay alternativa).</li><li>Rutas: Valhalla (valhalla1.openstreetmap.de) y OSRM (routing.openstreetmap.de), con datos de OpenStreetMap. Respaldo: OSRM vehicular (router.project-osrm.org) y Google Maps.</li><li>Cota del terreno: Open-Meteo (modelo Copernicus de 90 m: errores de varios metros).</li><li>Recintos: OpenStreetMap vía Overpass y Nominatim.</li><li>Si un servicio no responde a tiempo, la página usa datos precargados y lo indica con el aviso “Usando datos precargados”.</li></ul>'+
+  '<p class="sm">Mapas © Esri y colaboradores de OpenStreetMap. Datos © colaboradores de OpenStreetMap (ODbL).</p>';
+  $('acerca').hidden=false;$('acX').focus()}
+$('acX').onclick=()=>$('acerca').hidden=true;
+
+/* ---------- Diagnóstico de servicios ---------- */
+$('diag').onclick=async()=>{
+  const d=$('dg');d.hidden=false;d.textContent='Probando servicios…';
+  const q='[out:json];node(1);out;',P=(b)=>({method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(b)});
+  const ex=[[[-70.5160,-33.4033],[-70.5100,-33.4022],[-70.5100,-33.4030],[-70.5160,-33.4040],[-70.5160,-33.4033]]];
+  const okVH=async r=>{if(!r.ok)return r;const j=await r.json().catch(()=>null);return{ok:!!(j&&j.trip),status:j&&j.trip?200:'sin ruta'}};
+  const T=[['Altura del terreno (Open-Meteo)',()=>fetchT('https://api.open-meteo.com/v1/elevation?latitude=-33.04&longitude=-71.62',12000)],
+    ['Ruta peatonal (OSRM Alemania)',()=>fetchT(OSRM+'route/v1/foot/-71.6277,-33.0392;-71.6200,-33.0450?overview=false',12000)],
+    ['Tabla de tiempos (OSRM Alemania)',()=>fetchT(OSRM+'table/v1/foot/-71.6277,-33.0392;-71.6200,-33.0450',12000)],
+    ['Ruta peatonal (Valhalla)',()=>fetchT(VALHALLA+'route',12000,P({locations:[{lat:-33.0392,lon:-71.6277},{lat:-33.045,lon:-71.62}],costing:'pedestrian'})).then(okVH)],
+    ['Valhalla con exclude_polygons (aluvión)',()=>fetchT(VALHALLA+'route',12000,P({locations:[{lat:-33.4045,lon:-70.5130},{lat:-33.4010,lon:-70.5140}],costing:'pedestrian',exclude_polygons:ex})).then(okVH)],
+    ['Ruta vehicular (OSRM demo)',()=>fetchT('https://router.project-osrm.org/route/v1/driving/-71.6277,-33.0392;-71.6200,-33.0450?overview=false',12000)],
+    ['Recintos (Overpass Francia)',()=>fetchT(OV[0]+'?data='+encodeURIComponent(q),12000)],['Recintos (Overpass principal)',()=>fetchT(OV[1]+'?data='+encodeURIComponent(q),12000)],
+    ['Recintos (Overpass respaldo)',()=>fetchT(OV[2]+'?data='+encodeURIComponent(q),12000)],
+    ['Búsqueda (Nominatim)',()=>fetchT('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=Valparaiso',12000)]];
+  const res=await Promise.all(T.map(async t=>{try{const r=await t[1]();return(r.ok?'✔ ':'✖ ')+t[0]+(r.ok?'':' → '+(typeof r.status==='number'?'error '+r.status:r.status))}catch(e){return'✖ '+t[0]+' → sin respuesta'}}));
+  const fu=Object.values(SCENARIOS).map(S=>'• '+S.titulo+': '+S.estadoDatos());
+  const sae=validarSAE().map(s=>(s.ok?'✔ ':'✖ ')+'Texto SAE '+s.esc+': '+s.n+'/90 caracteres'+(s.ok?'':' (SUPERA EL LÍMITE)'));
+  d.textContent=res.join('\n')+'\n\nDatos por escenario (en vivo / precargados):\n'+fu.join('\n')+'\n\n'+sae.join('\n');
+};
+
+/* =====================================================================================
+   INTERFAZ DE ESCENARIO
+   Cada escenario es un objeto con:
+     id, titulo, centro [lat,lon], zoom, minZoom, bounds [[s,o],[n,e]] (maxBounds propios)
+     fase2 (bool: botón "Fase 2: después")
+     ubicaciones: [{nombre, ll:[lat,lon]} ×3]
+     formHTML(), leerForm() → parámetros | null, amenaza(p) → bool (muestra SAE y suena la alarma)
+     sae(p) → {texto (≤ 90 caracteres), enlace}, nota(), leyenda(), acercaHTML(), estadoDatos()
+     init(capa) dibuja capas propias e inicia precargas · destroy() limpia temporizadores/animaciones
+     evaluar(ll, ctx) → Promise<resultado> con {nivel:'rojo'|'ambar'|'verde'|'gris', banner, icono, instr[],
+        det, ev, evitar[], avisos[], ruta:{pts, dest:{ll,nombre}, salidaLL, flecha}, gm, ru, voz, sos, preguntaPMR}
+        (usar ctx.ok() tras cada await: si es false, una respuesta tardía no debe pintar nada)
+     sortear() → Promise<[{nombre, ll} ×3]>, etiqueta(ll), enZonaRoja(ll), zonaTexto(ll),
+     capasDespacho(capa), ejemplosSOS(n) → [[lat,lon]…], horaAlerta() (opcional)
+   CÓMO AGREGAR UN ESCENARIO (p. ej. incendio forestal o lluvias): copie la estructura de uno de los
+   objetos de abajo, complete estos campos con sus datos (y sus datos de respaldo embebidos) y agréguelo
+   a SCENARIOS y a un botón data-esc="<id>" en la pantalla inicial. El núcleo no necesita cambios.
+   ===================================================================================== */
+
+/* ---------- ESCENARIO: TSUNAMI · VALPARAÍSO (reglas del simulador original) ---------- */
+const TSU=(()=>{
+  const COTA=30,D_KM=105,V_KMH=225,ETA=Math.round(D_KM/V_KMH*60); // prototipo: epicentro a 105 km de la costa; velocidad media de la ola 225 km/h → ~28 min. ÚNICO valor de llegada de las olas en toda la interfaz.
+  const C={ELEV:null,ZP:null,fuente:'pendiente',ultima:'—'};
+  const gridZ=()=>{const G=[];for(let i=0;i<13;i++)for(let j=0;j<19;j++)G.push(L.latLng(-33.070+i*.0045,-71.675+j*.0048));return G};
+  const gridS=()=>{const G=[];for(let i=0;i<9;i++)for(let j=0;j<11;j++)G.push(L.latLng(-33.062+i*.0045,-71.648+j*.0048));return G};
+  let S;
+  async function getElev(){
+    if(C.ELEV)return C.ELEV;
+    const pts=gridS();
+    const r=await getJSON('https://api.open-meteo.com/v1/elevation?latitude='+pts.map(p=>p.lat.toFixed(5)).join(',')+'&longitude='+pts.map(p=>p.lng.toFixed(5)).join(','),2,8000);
+    if(!r.elevation||r.elevation.length!==pts.length)throw new Error('cota');
+    return C.ELEV=pts.map((p,i)=>({ll:p,z:r.elevation[i]}))}
+  function tipo(t){return t.leisure==='stadium'?'Estadio':t.amenity==='university'?'Universidad':t.amenity==='college'?'Instituto':t.amenity==='school'?'Colegio':t.leisure==='sports_centre'?'Recinto deportivo':t.leisure==='park'?'Parque':t.amenity==='hospital'?'Hospital':'Centro comunitario'}
+  const TIER=t=>({Colegio:1,Estadio:1,Universidad:2,Instituto:2,'Recinto deportivo':2,'Centro comunitario':2})[t]||3;
+  function elegir(ok,eta){
+    const SEG=3,EXTRA=10;
+    const seg=ok.filter(o=>o.r.min<=eta-SEG);
+    if(!seg.length)return{o:ok.slice().sort((a,b)=>a.r.min-b.r.min)[0],nota:'Ninguna zona se alcanza con '+SEG+' min de margen antes de las olas: se muestra la más rápida.'};
+    const fast=Math.min(...seg.map(o=>o.r.min));
+    const o=seg.filter(o=>o.r.min<=fast+EXTRA).sort((a,b)=>TIER(a.z.tipo)-TIER(b.z.tipo)||a.r.min-b.r.min)[0];
+    return{o:o,nota:TIER(o.z.tipo)===1?'':'No hay un colegio o estadio seguro que se alcance a tiempo y sin un desvío largo: se eligió el recinto seguro más cercano.'}}
+  async function recintos(){
+    const bb='-33.075,-71.680,-33.010,-71.570',P=[];
+    const add=(la,lo,name,tp)=>{const ll=L.latLng(la,lo);if(!P.some(x=>x.ll.distanceTo(ll)<40))P.push({ll:ll,name:name||'',tipo:tp})};
+    try{const r=await ov('[out:json][timeout:25];(nwr["amenity"~"^(school|college|university|hospital|community_centre)$"]('+bb+');nwr["leisure"~"^(stadium|sports_centre|park)$"]('+bb+'););out center tags 300;','Recintos');
+      r.elements.forEach(e=>{if(!e.tags)return;const c=e.center||e;if(c.lat!=null)add(c.lat,c.lon,e.tags.name,tipo(e.tags))})}catch(e){}
+    if(!P.length){
+      for(const [q,tp] of [['colegio','Colegio'],['liceo','Colegio'],['estadio','Estadio'],['universidad','Universidad'],['parque','Parque']]){
+        if(ST.esc!==S)break;
+        try{const r=await getJSON('https://nominatim.openstreetmap.org/search?format=json&limit=40&bounded=1&viewbox=-71.680,-33.010,-71.570,-33.075&q='+q,2,8000);
+          r.forEach(x=>add(+x.lat,+x.lon,(x.display_name||'').split(',')[0],tp))}catch(e){}
+        await sleep(1100)}}       // uso razonable de Nominatim: ≥ 1 s entre llamadas
+    return P}
+  async function zonas(){
+    zst('Midiendo altura del terreno y distancia al mar…',S);
+    const G=gridZ();
+    let z;try{z=await elevAll(G)}catch(e){throw new Error('Altura del terreno (Open-Meteo): sin respuesta')}
+    const sea=G.filter((p,k)=>z[k]==null||z[k]<=0.5);
+    if(!sea.length)throw new Error('No se detectó el mar en el área de estudio');
+    const costa=ll=>Math.max(0,Math.min(...sea.map(s=>s.distanceTo(ll)))-250);
+    const Z=[];G.forEach((p,k)=>{if(z[k]>0.5)Z.push({ll:p,z:z[k],name:'',tipo:'Punto en altura',costa:costa(p)})});
+    zst('Buscando colegios, estadios y otros recintos…',S);
+    let R=[];try{R=await recintos()}catch(e){}
+    let n=0;
+    if(R.length){try{const ez=await elevAll(R.map(r=>r.ll));R.forEach((r,k)=>{r.z=ez[k];r.costa=costa(r.ll)});R=R.filter(r=>r.z>0.5);n=R.length}catch(e){R=[]}}
+    zst('✔ '+n+' recintos y '+Z.length+' puntos en altura verificados (cota y distancia al mar)'+(n?'':' · recintos no disponibles: se usan puntos en altura'),S);
+    return R.concat(Z)}
+  function getZonas(){
+    if(!C.ZP)C.ZP=zonas().then(z=>{C.fuente='en vivo';return z}).catch(e=>{C.ZP=null;zst('✖ '+(e&&e.message?e.message:'error')+'. Al emitir la alerta se usarán datos precargados.',S);throw e});
+    return C.ZP}
+  const embebidas=()=>VALPO_ZONAS.map(a=>({ll:L.latLng(a[0],a[1]),z:a[2],costa:a[3],name:a[4],tipo:a[5]}));
+  function cotaEstimada(ll){ll=L.latLng(ll);const i=Math.round((ll.lat+33.070)/.0045),j=Math.round((ll.lng+71.675)/.0048);if(i<0||i>12||j<0||j>18)return null;return VALPO_GRILLA[i*19+j]}
+  async function tabla(a,zs,o){
+    if(o.pmr){try{const km=await matrizValhalla(a,zs.map(z=>z.ll),{pmr:true});return km.map(k=>k==null?null:{km:k,min:k/V_KMH_PMR*60})}catch(e){}}
+    const co=[a].concat(zs.map(z=>z.ll)).map(p=>p.lng+','+p.lat).join(';');
+    const r=await getJSON(OSRM+'table/v1/foot/'+co+'?sources=0&annotations=duration,distance',2,8000);
+    return r.distances[0].slice(1).map(d=>d==null?null:{km:d/1000,min:d/1000/vMarcha(o)*60})}
+  async function ruta(a,b,o){
+    // Orden original: OSRM a pie → Valhalla → OSRM vehicular. Con movilidad reducida, Valhalla primero (evita escaleras).
+    for(const t of (o.pmr?['vh','osrm','veh']:['osrm','vh','veh'])){
+      try{
+        if(t==='osrm'){const rs=await rutasOSRM(a,b,false);if(rs[0])return conTiempo(Object.assign(rs[0],{sinGarantia:o.pmr}),o)}
+        if(t==='vh')return conTiempo(await rutaValhalla(a,b,{pmr:o.pmr}),o);
+        if(t==='veh')return conTiempo(await rutaVehOSRM(a,b),o);
+      }catch(e){}
+      if(ST.esc!==S)break}
+    throw new Error('sin ruta')}
+  const amenaza=p=>p.M>=7&&p.P<=100;
+  S={
+    id:'tsunami_valpo',titulo:'Tsunami · Valparaíso',centro:[-33.0392,-71.6277],zoom:15,minZoom:12,bounds:[[-33.10,-71.72],[-32.98,-71.52]],
+    fase2:false,ETA,COTA,
+    ubicaciones:[{nombre:'Calle Blanco (plan)',ll:[-33.0392,-71.6277]},{nombre:'Calle Molina (centro cívico)',ll:[-33.0455,-71.6197]},{nombre:'Muelle Barón',ll:[-33.0372,-71.6110]}],
+    formHTML:()=>'<h2>Evento sísmico en el mar de Valparaíso</h2><div class="g"><label>Magnitud<input id="mag" type="number" step="0.1" min="1" max="10" value="8.2"></label><label>Profundidad (km)<input id="prof" type="number" min="0" max="700" value="15"></label></div>',
+    leerForm(){const M=+$('mag').value,P=+$('prof').value;if(!(M>0)||!(P>=0)){zst('Revise la magnitud y la profundidad.');return null}return{M,P}},
+    amenaza,
+    sae:()=>({texto:'TSUNAMI Valparaíso: evacúe a pie a zona alta, sobre 30 m. Ruta: alerta.example/t',enlace:'alerta.example/t'}),
+    nota:()=>'Elija una de las 3 ubicaciones sobre el mapa (🎲 las sortea de nuevo). Zonas seguras: recintos reales de OpenStreetMap sobre la cota segura y lejos de la costa. Prioridad a colegios y estadios, siempre que se alcancen antes de las olas (≥3 min de margen) y sin un desvío de más de 10 min. El epicentro (a '+D_KM+' km de la costa) y la llegada de las olas (unos '+ETA+' min) son valores fijos de prototipo, del orden de lo ocurrido en terremotos cercanos a la costa de Chile. Simulación con reglas ilustrativas, no oficiales.',
+    leyenda:()=>'<b>Tsunami · Valparaíso</b><div><span class="sq" style="background:#1b8f4f;border-radius:50%"></span> Zona segura prioritaria (colegio o estadio)</div><div><span class="sq" style="background:#8fd3a6;border-radius:50%"></span> Otra zona segura</div><div><span class="sq" style="background:#1c6fe0;height:.35rem"></span> Ruta a pie</div><div class="k">Zona segura: cota ≥ '+COTA+' m y lejos de la costa según la magnitud. Aparecen al emitir la alerta.</div>',
+    acercaHTML:()=>'<ul><li>Alerta de tsunami si la magnitud es ≥ 7 y la profundidad ≤ 100 km (regla ilustrativa).</li><li>Epicentro fijo a '+D_KM+' km de la costa; velocidad media de la ola '+V_KMH+' km/h → llegada de las olas en <b>~'+ETA+' min</b>. Es el único valor de llegada usado en la interfaz.</li><li>Tiempo de escape = llegada de las olas − tiempo de la ruta a pie.</li><li>Zona segura: cota ≥ '+COTA+' m y distancia a la costa ≥ 500 m (M &lt; 8), 1.000 m (M ≥ 8) o 1.500 m (M ≥ 8,5).</li><li>Prioridad a colegios y estadios si se alcanzan con ≥ 3 min de margen y sin un desvío de más de 10 min.</li><li>Las 3 ubicaciones por defecto son fijas; 🎲 sortea puntos de cota baja (3 a 20 m).</li><li>Respaldo: zonas seguras precalculadas con el mismo algoritmo (ver tools/tsunami_datos.mjs).</li></ul>',
+    estadoDatos:()=>'zonas seguras '+(C.fuente==='en vivo'?'en vivo':C.fuente==='precargados'?'precargadas':'pendientes')+' · última ruta: '+C.ultima,
+    init(){getZonas().catch(()=>{});if(C.fuente==='pendiente')zst('Zonas seguras: cargando datos en vivo…',S)},
+    destroy(){},
+    etiqueta(ll){const z=cotaEstimada(ll);return z==null?'':'cota ~'+Math.max(0,Math.round(z))+' m (estimada)'},
+    enZonaRoja(ll,ej){if(ej)return true;const z=cotaEstimada(ll);return !!(ST.active&&ST.params&&amenaza(ST.params)&&z!=null&&z<COTA)},
+    zonaTexto(ll,ej){const z=cotaEstimada(ll);return ej||(z!=null&&z<COTA)?'Zona baja (bajo '+COTA+' m)':'Zona alta'},
+    capasDespacho(capa){gridZ().forEach((p,k)=>{const z=VALPO_GRILLA[k];if(z!=null&&z>0.5&&z<COTA)L.rectangle([[p.lat-.00225,p.lng-.0024],[p.lat+.00225,p.lng+.0024]],{stroke:false,fillColor:'#e53935',fillOpacity:.22,interactive:false}).addTo(capa)})},
+    ejemplosSOS(n){const c=gridZ().filter((p,k)=>{const z=VALPO_GRILLA[k];return z!=null&&z>0.5&&z<COTA});const o=[];for(let i=0;i<n;i++){const p=c[Math.floor(Math.random()*c.length)];o.push([p.lat+(Math.random()-.5)*.003,p.lng+(Math.random()-.5)*.003])}return o},
+    async sortear(){
+      let c=[];try{c=(await conPlazo(getElev(),6000)).filter(e=>e.z>=3&&e.z<20)}catch(e){c=gridS().map((p,i)=>({ll:p,z:VALPO_SORTEO[i]})).filter(e=>e.z!=null&&e.z>=3&&e.z<20)}
+      if(c.length>=3){const n=[];c.slice().sort(()=>Math.random()-.5).forEach(e=>{if(n.length<3&&n.every(q=>q.distanceTo(e.ll)>600))n.push(e.ll)});
+        if(n.length===3)return n.map((ll,i)=>({nombre:'Sorteada '+(i+1)+' (cota baja)',ll:[ll.lat,ll.lng]}))}
+      return null},
+    async evaluar(me,ctx){
+      const p=ctx.params,M=p.M,P=p.P,eta=ETA,cota=COTA,o=ctx.opts;
+      const am=amenaza(p);
+      const ev='Sismo en el mar de Valparaíso · M <b>'+M+'</b> · prof. <b>'+P+' km</b> · <b>'+horaReal()+'</b> · epicentro a <b>'+D_KM+' km</b> de la costa'+(am?' · olas en ~<b>'+eta+' min</b>':'');
+      if(!am){
+        const fuerte=M>=6;
+        return{nivel:fuerte?'ambar':'verde',banner:fuerte?'SISMO FUERTE · SIN AMENAZA DE TSUNAMI':'SISMO MODERADO',ev,
+          instr:fuerte?['Revise daños en su vivienda.','Evacúe solo si hay daños o aviso oficial.']:['No se requiere evacuar.'],
+          det:fuerte?'Con estos datos no hay amenaza de tsunami.':''}}
+      const banner='ALERTA DE TSUNAMI ACTIVADA';
+      ctx.parcial({nivel:'rojo',icono:'🌊',banner,ev,instr:['Determinando zonas seguras y la ruta más corta…']});
+      const mc=M>=8.5?1500:M>=8?1000:500;
+      let Zs,pre=false;
+      try{Zs=await conPlazo(getZonas(),8000)}catch(e){Zs=embebidas();pre=true;if(C.fuente!=='en vivo')C.fuente='precargados'}
+      if(!ctx.ok())return null;
+      const avisos=pre?['Usando datos precargados: los servicios de zonas seguras no respondieron a tiempo.']:[];
+      const zs=Zs.filter(e=>e.z>=cota&&e.costa>=mc);
+      if(!zs.length)return{nivel:'rojo',icono:'🌊',banner,ev,avisos,instr:['Suba a terreno alto ahora.','Aléjese de la costa a pie.'],det:'<span class="warn">No hay recintos con cota ≥ '+cota+' m y a ≥ '+mc+' m de la costa en esta área.</span>'};
+      const vis=zs.some(z=>z.tipo!=='Punto en altura')?zs.filter(z=>z.tipo!=='Punto en altura'):zs;
+      vis.forEach(z=>L.circleMarker(z.ll,{radius:TIER(z.tipo)===1?8:5,color:'#fff',weight:2,fillColor:TIER(z.tipo)===1?'#1b8f4f':'#8fd3a6',fillOpacity:.95}).bindTooltip(html(z.name||'Zona segura')+' · '+z.tipo+(z.z!=null?' · cota '+Math.round(z.z)+' m':'')+(z.costa!=null?' · a '+Math.round(z.costa)+' m del mar':'')).addTo(ctx.capa));
+      const srt=zs.slice().sort((a,c)=>me.distanceTo(a.ll)-me.distanceTo(c.ll));
+      const near=srt.filter(z=>TIER(z.tipo)===1).slice(0,4).concat(srt.filter(z=>TIER(z.tipo)>1).slice(0,3));
+      const desc=z=>z.tipo+(z.z!=null?' · cota '+Math.round(z.z)+' m':'')+(z.costa!=null?' · a '+Math.round(z.costa)+' m de la costa':'');
+      const fallo=z=>{C.ultima='sin ruta (Google Maps)';return{nivel:'rojo',icono:'🌊',banner,ev,avisos,instr:['Vaya a pie a '+(z.name||z.tipo)+'.','Abra la ruta en Google Maps.','Suba a terreno alto sin detenerse.'],
+        det:'<b>Destino seguro: '+html(z.name||z.tipo)+'</b><br>'+desc(z)+'<br><span class="warn">La app no pudo dibujar la ruta por calles (servicio de rutas sin respuesta).</span>',gm:gmaps(me,z.ll),reintentar:true,ruta:{dest:{ll:z.ll,nombre:z.name}}}};
+      let ok=[],tb=null;
+      try{tb=await tabla(me,near,o)}catch(e){}
+      if(!ctx.ok())return null;
+      if(tb)near.forEach((z,i)=>{if(tb[i])ok.push({z:z,r:tb[i]})});
+      else{try{ok.push({z:near[0],r:await ruta(me,near[0].ll,o)})}catch(e){}}
+      if(!ctx.ok())return null;
+      if(!ok.length)return fallo(near[0]);
+      const el=elegir(ok,eta);let bz=el.o.z,best=el.o.r;const nota=el.nota;
+      if(!best.pts){try{best=await ruta(me,bz.ll,o)}catch(x){if(!ctx.ok())return null;return fallo(bz)}}
+      if(!ctx.ok())return null;
+      C.ultima=best.fuente+' (en vivo)';
+      const d=eta-best.min,dn=bz.name||bz.tipo;
+      if(o.pmr&&best.pasos)avisos.push('No hay una ruta sin escalones conocida hasta este destino: la ruta podría incluir escaleras.');
+      if(o.pmr&&best.sinGarantia)avisos.push('Ruta del servicio de respaldo: no se pudo garantizar que evite escaleras.');
+      const instr=['Vaya a pie a '+dn+'.','Siga la ruta azul: '+fmt1(best.km)+' km, '+Math.round(best.min)+' min.',d>=0?'Camine sin detenerse hasta la zona alta.':'Suba a terreno más alto sin detenerse.','No use el auto.'];
+      if(o.pmr&&d<0)instr.push('Pida ayuda con el botón SOS ahora.');
+      let det='<b>Vaya a pie a: '+html(dn)+'</b> · '+fmt1(best.km)+' km, '+Math.round(best.min)+' min<br>'+desc(bz);
+      const falta=Math.max(1,Math.ceil(-d)),esc=d>=0?String(Math.floor(d)):'−'+falta;   // el déficit se redondea hacia arriba (conservador)
+      det+='<br>'+(d>=0?'<span class="ok">Llega con '+Math.floor(d)+' min de margen antes de las olas.</span>':'<span class="warn">Faltan '+falta+' min: siga hacia terreno más alto sin detenerse.</span>');
+      det+='<br><span class="k">Olas en ~'+eta+' min − ruta '+Math.round(best.min)+' min = tiempo de escape '+esc+' min (a '+fmt1(vMarcha(o))+' km/h).</span>';
+      if(nota)det+='<br><span class="warn">'+nota+'</span>';
+      return{nivel:'rojo',icono:'🌊',banner,ev,avisos,instr,det,sos:o.pmr&&d<0,gm:gmaps(me,bz.ll),
+        ruta:{pts:best.pts,dest:{ll:bz.ll,nombre:dn}},
+        ru:(best.names.length?'Por: '+html(best.names.slice(0,6).join(' › '))+' · ':'')+(best.veh?'Ruta por calles aptas para vehículos (aproximada). ':'')+'Criterios de zona segura: cota ≥ '+cota+' m y ≥ '+mc+' m de la costa.',
+        voz:banner+'. '+instr.join(' ')+(d>=0?' Llega con '+Math.floor(d)+' minutos de margen.':' Faltan '+falta+' minutos.')};
+    }
+  };
+  return S;
+})();
+
+/* ---------- ESCENARIO: ALUVIÓN · LAS CONDES (8-oct-2026, reconstrucción) ---------- */
+const ALU=(()=>{
+  const CFG=ZONAS_CFG,PROP=ALUVION_EJE.properties;
+  let V_FRENTE_MS=2.5;   // velocidad del frente (m/s). Valor ilustrativo: los flujos de detritos varían entre ~1 y >10 m/s.
+  // Proyección plana local (m) con origen en la cabecera: suficiente a escala de barrio
+  const O=PROP.cabecera,KX=Math.cos(O[0]*Math.PI/180)*111320,KY=110540;
+  const P=ll=>Array.isArray(ll)?[(ll[1]-O[1])*KX,(ll[0]-O[0])*KY]:[(ll.lng-O[1])*KX,(ll.lat-O[0])*KY];
+  const Pinv=q=>L.latLng(O[0]+q[1]/KY,O[1]+q[0]/KX);
+  const D2=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  const RAM=ALUVION_EJE.geometry.coordinates.map((c,i)=>{const m=PROP.ramales[i],ll=c.map(q=>[q[1],q[0]]),xy=ll.map(P),cum=[0];
+    for(let k=1;k<xy.length;k++)cum.push(cum[k-1]+D2(xy[k],xy[k-1]));return Object.assign({},m,{ll,xy,cum,len:cum[cum.length-1]})});
+  const EJE=RAM.filter(r=>!r.verificar),RE=RAM.find(r=>r.verificar);
+  // Zonas: anillos proyectados para point-in-polygon (ray casting) y anillos [lat,lon] para dibujar
+  const Z={};
+  for(const k of ['roja','amarilla','precaucion','cauce']){const g=ALUVION_ZONAS[k],ps=g.type==='Polygon'?[g.coordinates]:g.coordinates;
+    Z[k]={ext:ps.map(p=>p[0]),ll:ps.map(p=>p.map(r=>r.map(c=>[c[1],c[0]]))),xy:ps.map(p=>p.map(r=>r.map(c=>P([c[1],c[0]]))))}}
+  function enRing(q,r){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],b=r[j];if(((a[1]>q[1])!==(b[1]>q[1]))&&(q[0]<(b[0]-a[0])*(q[1]-a[1])/(b[1]-a[1])+a[0]))c=!c}return c}
+  const enZxy=(q,k)=>Z[k].xy.some(p=>enRing(q,p[0])&&!p.slice(1).some(h=>enRing(q,h)));
+  const enZona=(ll,k)=>enZxy(P(ll),k);
+  const zonaXY=q=>enZxy(q,'roja')?'roja':enZxy(q,'amarilla')?'amarilla':enZxy(q,'precaucion')?'precaucion':'fuera';
+  const zonaDe=ll=>zonaXY(P(ll));
+  function segPt(q,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((q[0]-a[0])*dx+(q[1]-a[1])*dy)/l)):0,x=a[0]+t*dx,y=a[1]+t*dy;return{d:Math.hypot(q[0]-x,q[1]-y),x,y,t}}
+  function borde(q,k){let b={d:Infinity};for(const p of Z[k].xy)for(const r of p)for(let i=1;i<r.length;i++){const s=segPt(q,r[i-1],r[i]);if(s.d<b.d)b=s}return b}
+  function cercano(q,ram){let b={d:Infinity};for(let k=1;k<ram.xy.length;k++){const a=ram.xy[k-1],c=ram.xy[k],s=segPt(q,a,c);
+    if(s.d<b.d)b={d:s.d,x:s.x,y:s.y,k,t:s.t,s:ram.cum[k-1]+s.t*(ram.cum[k]-ram.cum[k-1]),lado:Math.sign((c[0]-a[0])*(q[1]-a[1])-(c[1]-a[1])*(q[0]-a[0])),ram}}return b}
+  const calleEn=(ram,s)=>{let n=ram.calles[0][1];for(const c of ram.calles)if(c[0]<=s)n=c[1];return n};
+  function ejeCercano(ll){const q=P(ll);let b=null;for(const r of EJE){const c=cercano(q,r);if(!b||c.d<b.d-0.5)b=c}
+    const r=b.ram;b.z=r.z[b.k-1]+(r.z[b.k]-r.z[b.k-1])*b.t;b.calle=calleEn(r,b.s);return b}
+  // Intersección de segmentos (para "nunca cruzar el eje"). Cuenta también los toques en un vértice: las calles OSM
+  // se cruzan en nodos compartidos, así que una ruta que cruza el eje suele pasar EXACTAMENTE por un vértice del eje.
+  function cruza(a,b,c,d){
+    const o=(p,q,r)=>{const v=(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);return Math.abs(v)<1e-3?0:Math.sign(v)};
+    const en=(p,q,r)=>Math.min(p[0],q[0])-1e-3<=r[0]&&r[0]<=Math.max(p[0],q[0])+1e-3&&Math.min(p[1],q[1])-1e-3<=r[1]&&r[1]<=Math.max(p[1],q[1])+1e-3;
+    const o1=o(a,b,c),o2=o(a,b,d),o3=o(c,d,a),o4=o(c,d,b);
+    return(o1*o2<0&&o3*o4<0)||(!o1&&en(a,b,c))||(!o2&&en(a,b,d))||(!o3&&en(c,d,a))||(!o4&&en(c,d,b))}
+  function cruzaSegEje(a,b){for(const r of EJE)for(let k=1;k<r.xy.length;k++)if(cruza(a,b,r.xy[k-1],r.xy[k]))return true;return false}
+  function cruzaEje(xy){for(let i=1;i<xy.length;i++)if(cruzaSegEje(xy[i-1],xy[i]))return true;return false}
+  function densa(xy,paso){const o=[xy[0]];for(let i=1;i<xy.length;i++){const n=Math.max(1,Math.ceil(D2(xy[i-1],xy[i])/paso));for(let k=1;k<=n;k++)o.push([xy[i-1][0]+(xy[i][0]-xy[i-1][0])*k/n,xy[i-1][1]+(xy[i][1]-xy[i-1][1])*k/n])}return o}
+  // Validación geométrica de una ruta: no cruza el eje, no pasa por el cauce y, tras salir de la roja, no vuelve a entrar
+  function validar(pts,roja){
+    const xy=pts.map(P);if(cruzaEje(xy))return 'cruza el eje del flujo';
+    const dz=densa(xy,8);let salio=!roja;
+    for(let i=1;i<dz.length;i++){const q=dz[i];
+      if(enZxy(q,'cauce'))return 'pasa por el cauce';
+      const r=enZxy(q,'roja');
+      if(r&&salio&&borde(q,'roja').d>15)return roja?'vuelve a entrar a la zona roja':'entra a la zona roja';
+      if(!r)salio=true}
+    return null}
+  // Valhalla limita el perímetro total de exclude_polygons a 10 km: el polígono se recorta (Sutherland–Hodgman)
+  // a una ventana cuadrada alrededor de la persona, que se achica hasta quedar bajo 9,5 km.
+  function recortar(ring,b){
+    let pts=ring.slice(0,-1);
+    for(const [ax,v,sg] of [[0,b[0],1],[0,b[2],-1],[1,b[1],1],[1,b[3],-1]]){
+      const inp=pts;pts=[];
+      for(let i=0;i<inp.length;i++){const c=inp[i],p=inp[(i+inp.length-1)%inp.length],ci=sg*(c[ax]-v)>=0,pi=sg*(p[ax]-v)>=0;
+        const x=()=>{const t=(v-p[ax])/(c[ax]-p[ax]);return[p[0]+(c[0]-p[0])*t,p[1]+(c[1]-p[1])*t]};
+        if(ci){if(!pi)pts.push(x());pts.push(c)}else if(pi)pts.push(x())}
+      if(!pts.length)break}
+    return pts}
+  const perim=r=>r.reduce((s,q,i)=>s+D2(q,r[(i+1)%r.length]),0);
+  function exclusion(k,q0){
+    for(let h=1600;h>=300;h-=200){
+      const rs=Z[k].xy.map(p=>recortar(p[0],[q0[0]-h,q0[1]-h,q0[0]+h,q0[1]+h])).filter(r=>r.length>=3);
+      if(rs.reduce((s,r)=>s+perim(r),0)<9500)return rs.length?rs.map(r=>{const c=r.map(q=>{const l=Pinv(q);return[+l.lng.toFixed(6),+l.lat.toFixed(6)]});c.push(c[0]);return c}):null}
+    return null}
+  function salida(pts){const xy=densa(pts.map(P),5);let s=0;for(let i=0;i<xy.length;i++){if(i)s+=D2(xy[i],xy[i-1]);if(!enZxy(xy[i],'roja'))return{m:s,ll:Pinv(xy[i])}}return{m:Infinity,ll:null}}
+  const RUMBO=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];
+  const rumbo=(a,b)=>{const p=P(a),q=P(b),g=(Math.atan2(q[0]-p[0],q[1]-p[1])*180/Math.PI+360)%360;return RUMBO[Math.round(g/45)%8]};
+  const EVITAR=['General Blanche (San Carlos de Apoquindo–Las Condesas)','Quebrada Honda (San Ramón–Colina Vista Hermosa)','Av. La Plaza (Álvaro del Portillo–Camino El Alba)','Camino El Alba','Cruces de General Blanche y Quebrada Honda'];
+  const TIPO=t=>t.leisure==='park'?'Parque':t.leisure==='pitch'?'Cancha':t.leisure==='sports_centre'?'Recinto deportivo':t.leisure==='stadium'?'Estadio':(t.place==='square'||t.leisure==='garden')?'Plaza':t.amenity==='school'?'Colegio':null;
+
+  // ---- Estado y cachés propios del escenario ----
+  const C={dest:null,destP:null,fuenteDest:'precargados',ultima:'—',rutas:new Map()};
+  const DEST0=ALUVION_DESTINOS.map(a=>({ll:L.latLng(a[0],a[1]),z:a[2],name:a[3],tipo:a[4],gen:!!a[5]}));
+  const destinos=()=>C.dest||DEST0;
+  function destinosVivo(){
+    if(C.destP)return C.destP;
+    C.destP=(async()=>{
+      const bb='-33.432,-70.575,-33.385,-70.485';
+      const j=await ov('[out:json][timeout:20];(nwr["leisure"~"^(park|pitch|sports_centre|stadium|garden)$"]('+bb+');nwr["amenity"="school"]('+bb+');nwr["place"="square"]('+bb+'););out center tags 600;','Destinos');
+      const out=[];
+      for(const e of j.elements){const t=e.tags||{},c=e.center||e,tp=TIPO(t);
+        if(!tp||c.lat==null||t.access==='private'||(tp==='Cancha'&&!t.name)||(t.leisure==='garden'&&!t.name))continue;
+        if(c.lon>-70.499)continue;                         // fuera de la precordillera (de donde viene el flujo)
+        const ll=L.latLng(c.lat,c.lon),q=P(ll);
+        if(enZxy(q,'amarilla')||enZxy(q,'precaucion')||borde(q,'amarilla').d<CFG.margenDestino||ejeCercano(ll).d>2500)continue;
+        if(out.some(x=>x.ll.distanceTo(ll)<80))continue;
+        out.push({ll,name:t.name||'',tipo:tp})}
+      if(out.length<10)throw new Error('pocos recintos');
+      const z=await elevAll(out.map(x=>x.ll));out.forEach((x,i)=>x.z=z[i]);
+      C.dest=out.filter(x=>x.z<960).concat(DEST0.filter(d=>d.gen));C.fuenteDest='en vivo';return C.dest
+    })().catch(e=>{C.destP=null;throw e});
+    return C.destP}
+
+  // ---- Animación del avance del frente ----
+  const sE0=cercano(P(RE.ll[0]),EJE.find(r=>r.id==='C')).s;   // el ramal E nace en Camino El Alba × Paul Harris
+  const t0=r=>r===RE?sE0/V_FRENTE_MS:0;                        // s desde las 17:00
+  const tFin=()=>Math.max(...RAM.map(r=>t0(r)+r.len/V_FRENTE_MS));
+  const A={t:0,play:false,vel:1,raf:0,last:0,lin:[],fr:[],capa:null,ref:0};
+  const reloj=t=>{const s=17*3600+Math.floor(t);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
+  function parcialR(r,d){if(d<=0)return null;const o=[r.ll[0]];for(let k=1;k<r.ll.length;k++){if(r.cum[k]<=d)o.push(r.ll[k]);else{const f=(d-r.cum[k-1])/(r.cum[k]-r.cum[k-1]);o.push([r.ll[k-1][0]+(r.ll[k][0]-r.ll[k-1][0])*f,r.ll[k-1][1]+(r.ll[k][1]-r.ll[k-1][1])*f]);break}}return o}
+  function dibujarAnim(){
+    $('aclock').textContent=reloj(A.t);const h=$('horaSim');if(h)h.textContent=reloj(A.t).slice(0,5);
+    if(!A.capa)return;
+    RAM.forEach((r,i)=>{const d=V_FRENTE_MS*(A.t-t0(r)),pts=parcialR(r,Math.min(d,r.len)),fr=A.fr[i];
+      if(pts&&pts.length>1){A.lin[i].setLatLngs(pts);if(d<r.len){fr.setLatLng(pts[pts.length-1]);if(!A.capa.hasLayer(fr))A.capa.addLayer(fr)}else A.capa.removeLayer(fr)}
+      else{A.lin[i].setLatLngs([]);A.capa.removeLayer(fr)}})}
+  function botonPlay(){const b=$('aplay');b.textContent=A.play?'⏸':'▶';b.setAttribute('aria-label',A.play?'Pausar la reproducción':'Reproducir el avance del aluvión')}
+  function paso(ts){
+    A.raf=0;if(!A.play)return;
+    const dt=A.last?Math.min(.25,(ts-A.last)/1000):0;A.last=ts;A.t+=dt*A.vel;
+    const F=tFin();if(A.t>=F){A.t=F;A.play=false;dibujarAnim();botonPlay();finAnim();return}
+    dibujarAnim();if(ts-A.ref>1000){A.ref=ts;refrescar()}
+    A.raf=requestAnimationFrame(paso)}
+  function play(){if(A.t>=tFin())A.t=0;A.play=true;A.last=0;botonPlay();if(!A.raf)A.raf=requestAnimationFrame(paso)}
+  function pausa(){A.play=false;if(A.raf)cancelAnimationFrame(A.raf);A.raf=0;botonPlay()}
+  function irA(t){A.t=Math.max(0,Math.min(t,tFin()));dibujarAnim();if(ST.active&&ST.esc===S){if(ST.fase2&&A.t<tFin()){ST.fase2=false;$('fase2').textContent='Fase 2: después'}evaluar()}}
+  function finAnim(){
+    zst('Fin de la reproducción ('+reloj(A.t).slice(0,5)+'). Fase 2: no regrese hasta aviso oficial.',S);
+    if(ST.active&&ST.esc===S){ST.fase2=true;$('fase2').textContent='Volver a la alerta';evaluar()}}
+  // Durante la reproducción, el margen de tiempo baja: si ya no alcanza a salir, se cambia a evacuación vertical
+  function refrescar(){
+    const r=ST.res;if(!ST.active||ST.esc!==S||!r||!r._alu||ST.fase2||r._alu.zona!=='roja')return;
+    const tF=(r._alu.s/V_FRENTE_MS-A.t)/60,el=$('tfr');if(el)el.textContent=minTxt(Math.max(0,tF));
+    const vert=tF<=0||r._alu.tSalida>tF-2;
+    if(vert!==!!r._alu.vertical)evaluar()}
+
+  // ---- Ruta de salida lateral ----
+  async function calcularRuta(me,s0,con,roja,ec,o,ctx){
+    const vm=vMarcha(o)*1000/60,q0=P(s0),excl=exclusion(roja?'cauce':'roja',q0);
+    try{await conPlazo(destinosVivo(),3000)}catch(e){}
+    if(!ctx.ok())return null;
+    let cand=destinos().filter(d=>!cruzaSegEje(q0,P(d.ll)));      // mismo lado del eje que la persona
+    if(!cand.length)cand=destinos().slice();
+    cand=cand.map(d=>({d,dist:D2(q0,P(d.ll)),alto:d.z!=null&&d.z>=ec.z})).sort((a,b)=>a.dist*(a.alto?1:1.4)-b.dist*(b.alto?1:1.4)).slice(0,6);
+    let vhOK=true,orden=cand;
+    try{const km=await matrizValhalla(s0,cand.map(c=>c.d.ll),{pmr:o.pmr,excl});
+      const sc=c=>c.km*1000/vm+(c.alto?0:3);                    // preferir destinos a igual o mayor cota que el eje
+      orden=cand.map((c,i)=>Object.assign(c,{km:km[i]})).filter(c=>c.km!=null).sort((a,b)=>sc(a)-sc(b));if(!orden.length)orden=cand}
+    catch(e){if(!e.http)vhOK=false}
+    if(!ctx.ok())return null;
+    const ini=con?[[me.lat,me.lng],[s0.lat,s0.lng]]:[[me.lat,me.lng]];
+    const armar=(r,c,fuente)=>{const pts=ini.concat(r.pts),sal=roja?salida(pts):{m:0,ll:null};
+      return{pts,km:r.km+(con?con[0].distanceTo(con[1])/1000:0),names:r.names,dest:c.d,fuente,pasos:!!r.pasos,salidaM:sal.m,salidaLL:sal.ll}};
+    // En zona roja importa salir de ella cuanto antes: se piden rutas a 3 destinos y se elige la que sale primero.
+    // En zona amarilla basta la primera ruta válida hacia el mejor destino.
+    const mejor=(lista,fuente)=>{let b=null;for(const x of lista){if(!x.r)continue;const pts=ini.concat(x.r.pts);if(validar(pts,roja))continue;
+      const a=armar(x.r,x.c,fuente);if(!b||a.salidaM<b.salidaM-10||(Math.abs(a.salidaM-b.salidaM)<=10&&a.km<b.km))b=a;if(!roja)break}return b};
+    const top=orden.slice(0,roja?3:2);
+    if(vhOK){                                                    // 1) Valhalla peatonal con exclude_polygons = cauce (o zona roja)
+      const rs=await Promise.all(top.map(c=>rutaValhalla(s0,c.d.ll,{pmr:o.pmr,excl}).then(r=>({r,c}),e=>({e,c}))));
+      if(!ctx.ok())return null;
+      const b=mejor(rs,'Valhalla (en vivo)');if(b)return b}
+    const ro=[];                                                 // 2) OSRM a pie con alternativas, validando la geometría
+    for(const c of top.slice(0,2)){try{(await rutasOSRM(s0,c.d.ll,true)).forEach(r=>ro.push({r,c}))}catch(e){if(!ctx.ok())return null;break}if(!ctx.ok())return null}
+    {const b=mejor(ro,'OSRM (en vivo, validada)');if(b)return b}
+    const u=ctx.cur>=0?ALUVION_UBIC[ctx.cur]:null,pre=u&&ALUVION_RUTAS[ctx.cur+'|'+(o.pmr?1:0)];   // 3) Ruta precargada
+    if(pre&&me.distanceTo(L.latLng(u.ll))<30){const d=pre.dest,sal=roja?salida(pre.pts):{m:0,ll:null};
+      return{pts:pre.pts,km:pre.km,names:pre.names||[],dest:{ll:L.latLng(d[0],d[1]),z:d[2],name:d[3],tipo:d[4]},fuente:'precargada',pasos:!!pre.pasos,salidaM:sal.m,salidaLL:sal.ll}}
+    // 4) Último recurso: flecha de salida más corta (borde de la zona roja del mismo lado) + Google Maps
+    let tgt=null;
+    if(roja){let b=Infinity;for(const p of Z.roja.xy)for(const r of p)for(let i=1;i<r.length;i++){const s=segPt(q0,r[i-1],r[i]);if(s.d<b&&!cruzaSegEje(q0,[s.x,s.y])){b=s.d;tgt=[s.x,s.y]}}
+      if(tgt){const v=[tgt[0]-q0[0],tgt[1]-q0[1]],n=Math.hypot(v[0],v[1])||1;tgt=Pinv([tgt[0]+v[0]/n*12,tgt[1]+v[1]/n*12])}}
+    const dst=cand[0]&&cand[0].d;
+    if(roja&&!tgt)return{sinSalida:true};                        // no hay salida sin cruzar el cauce
+    if(!tgt&&dst)tgt=dst.ll;if(!tgt)return null;
+    const pts=ini.concat([[tgt.lat,tgt.lng]]),recta=s0.distanceTo(tgt)*1.3;     // factor de rodeo 1,3
+    return{pts,km:recta/1000,names:[],dest:dst,fuente:'flecha',flecha:true,salidaM:roja?recta:0,salidaLL:roja?tgt:null}}
+
+  function vertical(base,x){
+    const o=x.o,yaLlego=x.tF<=0;
+    const instr=['Suba ya a un 2º piso o más alto.','Elija una construcción sólida.','No salga a la calle.','No use el auto.'];
+    const det=(x.sinSalida?'<span class="warn">No hay una salida a pie que no cruce las calles por donde baja el barro.</span> Quédese en altura dentro de una construcción sólida.':yaLlego?'<span class="warn">El barro ya podría estar en su sector.</span> Hora simulada '+x.hora+'.':
+      'Salir de la zona roja caminando tomaría <b>~'+minTxt(x.tSal)+'</b>'+(x.estimada?' (estimado en línea recta)':'')+' y el barro podría llegar a su sector en <b>~<span id="tfr">'+minTxt(x.tF)+'</span></b> (estimación ilustrativa). Se exigen 2 min de margen.')+
+      '<br><span class="k">Velocidad de marcha: '+fmt1(vMarcha(o))+' km/h · frente: '+fmt1(V_FRENTE_MS)+' m/s.</span>';
+    const r=Object.assign(base,{nivel:'rojo',icono:'⬆️',banner:'SUBA A UN 2º PISO YA',instr,det,sos:true,preguntaPMR:o.pmr});
+    r._alu.vertical=true;r._alu.tSalida=x.tSal;
+    r.voz=r.banner+'. '+instr.join(' ')+' Si necesita ayuda, use el botón S O S.';
+    if(o.pmr){r.sinPiso=Object.assign({},r,{banner:'PIDA AYUDA CON EL BOTÓN SOS AHORA',icono:'🆘',instr:['Pida ayuda con el botón SOS ahora.','Quédese en el lugar más alto que pueda.','Aléjese de puertas y ventanas bajas.'],preguntaPMR:false});
+      r.sinPiso.voz=r.sinPiso.banner+'. '+r.sinPiso.instr.join(' ')}
+    return r}
+
+  let S;
+  S={
+    id:'aluvion_lascondes',titulo:'Aluvión · Las Condes',centro:[-33.4035,-70.5250],zoom:15,minZoom:13,bounds:[[-33.445,-70.600],[-33.375,-70.475]],
+    fase2:true,ubicaciones:ALUVION_UBIC,zoomRuta:16,
+    get V(){return V_FRENTE_MS},
+    formHTML:()=>'<h2>Aluvión en Las Condes · jueves 8 de octubre de 2026</h2>'+
+      '<p class="sm">Reconstrucción del evento real a partir de prensa y cierres viales. Unos 15 mm de lluvia en una hora; se activaron quebradas de San Carlos de Apoquindo cerca de las 17:00.</p>'+
+      '<div class="g"><label>Velocidad del frente (m/s)<input id="vfr" type="number" min="0.5" max="15" step="0.5" value="'+V_FRENTE_MS+'"></label><label>Hora simulada<output id="horaSim">'+reloj(A.t).slice(0,5)+'</output></label>'+
+      '<span class="w sm" style="margin:0">Valor ilustrativo: los flujos de detritos varían entre ~1 y más de 10 m/s. Use ▶ en el mapa para ver el avance; puede emitir la alerta antes o durante la reproducción.</span></div>'+
+      '<details><summary>Cronología real de la alerta</summary><ul class="tl"><li><b>17:00</b>Comienza el aluvión (≈15 mm en una hora).</li><li><b>17:41</b>Primer aviso público: un video en X.</li><li><b>18:20</b>Alerta Roja para 10 comunas.</li><li><b>—</b>Nunca hubo un SAE de evacuación. Más tarde, un SAE pidió subir a pisos superiores.</li></ul></details>'+
+      '<details><summary>¿Por qué no se envió el SAE? Cómo lo resuelve DIMARKA</summary>'+S.tablaRazones()+'</details>',
+    tablaRazones:()=>'<table class="r"><tr><th>Razón oficial</th><th>DIMARKA</th></tr>'+
+      '<tr><td>No había un perímetro definido ni claridad sobre hacia dónde evacuar.</td><td>Zonas trazadas de antemano sobre las calles por donde baja el agua, ampliadas por seguridad. La ruta sale hacia el costado del cauce, sin cruzarlo.</td></tr>'+
+      '<tr><td>El SAE admite unos 90 caracteres.</td><td>El SAE lleva solo la acción esencial (sirve sin internet) y un enlace. El mapa, la ruta y los tiempos están en la página.</td></tr>'+
+      '<tr><td>El área mínima de envío es la comuna.</td><td>El SAE llega a toda la comuna, pero la página usa la ubicación: cada persona sabe si está en zona roja, amarilla o fuera.</td></tr>'+
+      '<tr><td>No permite diferenciar entre “evacúe” y “suba a un segundo piso”.</td><td>La página decide por ubicación y tiempo: salida lateral si alcanza con 2 min de margen; si no, 2º piso y botón SOS.</td></tr></table>',
+    leerForm(){let v=+$('vfr').value;if(!(v>0)){zst('Revise la velocidad del frente.');return null}v=Math.max(.5,Math.min(15,v));V_FRENTE_MS=v;$('vfr').value=v;dibujarAnim();return{V:v}},
+    amenaza:()=>true,
+    horaAlerta:()=>reloj(A.t).slice(0,5)+' (hora simulada)',
+    sae:()=>({texto:'ALUVIÓN Qda. Honda: aléjese del cauce o suba a un 2º piso. Ruta: alerta.example/a',enlace:'alerta.example/a'}),
+    nota:()=>'Elija una de las 3 ubicaciones (🎲 sortea una en cada zona) o toque el mapa. La zona está trazada según el recorrido del aluvión del 8-oct-2026, ampliada por seguridad. Reconstrucción a partir de cierres viales y prensa; no es un levantamiento técnico.',
+    leyenda:()=>'<b>Aluvión · Las Condes</b>'+
+      '<div><span class="sq" style="background:#e5393599;border:2px solid #b71c1c"></span> Zona roja: evacuar ya</div>'+
+      '<div><span class="sq" style="background:#f5b30166;border:2px solid #b07d00"></span> Zona amarilla: alejarse y prepararse</div>'+
+      '<div><svg width="20" height="15" aria-hidden="true"><rect width="20" height="15" fill="url(#rayas)" stroke="#b07d00" stroke-dasharray="3 2"/></svg> Precaución extendida (alcance reportado, a verificar)</div>'+
+      '<div><span class="sq" style="background:#5d3000;height:.3rem"></span> Eje del flujo: calles por donde bajó</div>'+
+      '<div><span class="sq" style="border-top:3px dashed #5d3000;height:0"></span> Ramal E: a verificar</div>'+
+      '<div><span class="sq" style="background:#1c6fe0;height:.35rem"></span> Ruta a pie · ● punto de salida de la zona roja</div>'+
+      '<div>🚌 🏥 Ⓜ️ Hechos reportados por la prensa</div>'+
+      '<div class="k">Zona trazada según el recorrido del aluvión del 8-oct-2026, ampliada por seguridad.</div>',
+    acercaHTML:()=>{const R=PROP.ramales;return'<p><b>Reconstrucción del evento real</b> (prensa, 8–10 oct 2026). No es un levantamiento técnico ni un mapa oficial de peligro.</p><ul>'+
+      '<li><b>Fecha y hora:</b> jueves 8 de octubre de 2026, cerca de las 17:00. Unos 15 mm de lluvia en una hora.</li>'+
+      '<li><b>Origen:</b> quebradas de San Carlos de Apoquindo. La prensa lo ubica en General Blanche con San Carlos de Apoquindo; la alcaldesa, en Monseñor Álvaro del Portillo con Av. La Plaza. Senapred habló de “Quebrada Las Ondas”; el resto de las fuentes dice Quebrada Honda.</li>'+
+      '<li><b>Causas probables (hipótesis preliminares):</b> ladera debilitada por el incendio de diciembre de 2025 (más de 800 ha); posible taponamiento de un canal o ducto subterráneo y rebalse de un canal en Francisco Bulnes Correa.</li>'+
+      '<li><b>Dirección del flujo:</b> surponiente. <b>Calles</b> (cierres de Transporte Informa, 9-oct): General Blanche (San Carlos de Apoquindo–Las Condesas), Quebrada Honda (San Ramón–Colina Vista Hermosa), Av. La Plaza (Álvaro del Portillo–Camino El Alba), Camino El Alba y los cruces de General Blanche y Quebrada Honda.</li>'+
+      '<li><b>Zona más afectada</b> (La Tercera): norte Camino El Alba, oriente Av. La Plaza, sur Quebrada Honda, poniente Av. Padre Hurtado (Pueblito Los Dominicos).</li>'+
+      '<li><b>Alcance extendido reportado</b> (CNN Chile, a verificar): el caudal habría llegado a Cristóbal Colón con Manquehue. Se muestra solo como “precaución extendida”.</li>'+
+      '<li><b>Daños reportados:</b> autos y buses arrastrados en La Plaza con Camino El Alba; barro en la urgencia de la Clínica San Carlos de Apoquindo y evacuación de pacientes; Metro Los Dominicos cerrado; 384 damnificados, 56 viviendas destruidas, unas 2.000 con daños, unas 1.200 personas rescatadas y 6 lesionados.</li>'+
+      '<li><b>Alerta:</b> 17:41 primer aviso público (video en X); 18:20 Alerta Roja para 10 comunas. Nunca hubo un SAE de evacuación; más tarde un SAE pidió subir a pisos superiores.</li></ul>'+
+      '<p><b>Por qué no se envió el SAE y cómo lo resuelve DIMARKA</b></p>'+S.tablaRazones()+
+      '<p><b>Cómo se trazó (supuestos, editables en el código)</b></p><ul>'+
+      '<li>Eje sobre calles reales de OpenStreetMap (obtenidas el '+PROP.obtenido.slice(0,10)+'), orientado de mayor a menor cota (Open-Meteo): '+R.map(r=>'ramal '+r.id+' '+html(r.nombre)+' '+(r.len/1000).toFixed(1).replace('.',',')+' km, '+r.z[0]+'→'+r.z[r.z.length-1]+' m'+(r.verificar?' (a verificar)':'')).join('; ')+'.</li>'+
+      '<li>Cabecera: Av. La Plaza × Álvaro del Portillo. Los ramales A y B bajan por Álvaro del Portillo hasta General Blanche; el B sigue por San Ramón hacia Quebrada Honda.</li>'+
+      '<li>Zona roja: '+CFG.rojaCabecera+' m por lado en la cabecera, que se ensancha linealmente hasta '+CFG.rojaAbanico+' m en Padre Hurtado, más el polígono de la zona más afectada. Quebrada Honda no llega a Padre Hurtado: ese borde sur se cerró con una recta hasta Padre Hurtado × General Blanche.</li>'+
+      '<li>Zona amarilla: roja + '+CFG.amarilla+' m. Precaución extendida: '+CFG.precaucion+' m del ramal E (Paul Harris y Av. Cristóbal Colón hasta Manquehue: trazado supuesto, solo calles que bajan; la nota de CNN no dice por qué calles llegó). Cauce (uso interno): '+CFG.cauce+' m del eje; ninguna ruta lo cruza.</li>'+
+      '<li>Destinos: recintos abiertos de OpenStreetMap y puntos sobre calles a +'+CFG.offsetPuntos+' m del borde amarillo, con ≥ '+CFG.margenDestino+' m de margen; se prefieren los que están a igual o mayor cota que el eje.</li>'+
+      '<li>Velocidad del frente: '+fmt1(V_FRENTE_MS)+' m/s (ilustrativa; los flujos de detritos varían entre ~1 y >10 m/s). Llegada del barro = distancia por el eje desde la cabecera ÷ velocidad, desde las 17:00.</li>'+
+      '<li>Evacuación vertical si el tiempo para salir de la zona roja supera la llegada del barro menos 2 min.</li></ul>'+
+      '<p><b>Fuentes</b></p><ul class="sm">'+[
+        ['La Tercera: zona más afectada','https://www.latercera.com/nacional/noticia/desde-san-carlos-de-apoquindo-hasta-pueblito-los-dominicos-informan-zona-mas-afectada-por-aluvion-en-las-condes/'],
+        ['Meganoticias: calles inhabilitadas (9-oct)','https://www.meganoticias.cl/nacional/533527-aluvion-las-condes-calles-inhabilitadas-transito-09-10-2026.html'],
+        ['CNN Chile: calles a evitar y alcance','https://www.cnnchile.com/pais/aluvion-san-carlos-las-condes-evitar-quebrada-honda-paul-harris-colon-alvaro-del-portillo-blanche/'],
+        ['Interferencia: advertencias de Sernageomin y la alerta','https://interferencia.cl/articulos/aluvion-en-las-condes-advertencias-de-sernageomin-obras-pendientes-y-una-alerta-que-no'],
+        ['La Tercera: director regional de Senapred y el SAE','https://www.latercera.com/nacional/noticia/director-regional-de-senapred-y-aluvion-en-las-condes-el-cerro-se-vino-abajo-no-servia-de-nada-lanzar-el-sae/'],
+        ['Canal 9: damnificados y rescatados','https://www.canal9.cl/episodios/2026/10/10/aluvion-en-las-condes-deja-384-damnificados-y-56-viviendas-destruidas-reportan-1-200-rescatados']
+      ].map(f=>'<li><a href="'+f[1]+'" target="_blank" rel="noopener">'+f[0]+'</a></li>').join('')+'</ul>'},
+    estadoDatos:()=>'eje y zonas embebidos · destinos '+(C.fuenteDest==='en vivo'?'en vivo':'precargados')+' · última ruta: '+C.ultima,
+    init(capa){
+      L.polygon(Z.amarilla.ll,{color:'#b07d00',weight:2,fillColor:'#f5b301',fillOpacity:.22}).bindTooltip('Zona amarilla: alejarse y prepararse',{sticky:true}).addTo(capa);
+      L.polygon(Z.precaucion.ll,{color:'#b07d00',weight:1.5,dashArray:'5 4',className:'z-rayas'}).bindTooltip('Precaución extendida (alcance reportado, a verificar)',{sticky:true}).addTo(capa);
+      L.polygon(Z.roja.ll,{color:'#b71c1c',weight:2.5,fillColor:'#e53935',fillOpacity:.3}).bindTooltip('Zona roja: evacuar ya',{sticky:true}).addTo(capa);
+      EJE.forEach(r=>L.polyline(r.ll,{color:'#5d3000',weight:3,opacity:.85}).bindTooltip('Eje del flujo · '+html(r.nombre)+' (reconstrucción)',{sticky:true}).addTo(capa));
+      L.polyline(RE.ll,{color:'#5d3000',weight:3,opacity:.85,dashArray:'8 7'}).bindTooltip('Ramal E: alcance reportado, a verificar',{sticky:true}).addTo(capa);
+      ALUVION_REFS.forEach(f=>L.marker(f.ll,{icon:L.divIcon({className:'',html:'<span class="ref" role="img" aria-label="'+html(f.titulo)+'">'+f.icono+'</span>',iconSize:[0,0]}),title:f.titulo}).bindTooltip('<b>'+html(f.titulo)+'</b><br>'+html(f.detalle)).addTo(capa));
+      A.capa=L.layerGroup().addTo(capa);A.lin=RAM.map(r=>L.polyline([],{color:'#6d3b00',weight:r.verificar?6:9,opacity:.85,dashArray:r.verificar?'10 8':null,interactive:false}).addTo(A.capa));
+      A.fr=RAM.map(()=>L.marker([0,0],{icon:L.divIcon({className:'',html:'<div class="frente"></div>',iconSize:[0,0]}),interactive:false,keyboard:false}));
+      $('anim').hidden=false;$('esc').classList.add('anim');dibujarAnim();botonPlay();
+      zst('Zona, eje y destinos precargados listos. Buscando recintos en vivo…',S);
+      destinosVivo().then(()=>zst('✔ Zonas listas · destinos seguros actualizados en vivo.',S)).catch(()=>zst('Zonas listas · destinos seguros: usando datos precargados.',S));
+    },
+    destroy(){pausa();A.t=0;A.capa=null;A.lin=[];A.fr=[];$('anim').hidden=true;$('esc').classList.remove('anim')},
+    etiqueta(ll){return{roja:'Zona roja',amarilla:'Zona amarilla',precaucion:'Precaución extendida',fuera:'Fuera de zona de riesgo'}[zonaDe(ll)]},
+    enZonaRoja:ll=>zonaDe(ll)==='roja',
+    zonaTexto(ll){return S.etiqueta(ll)},
+    capasDespacho(capa){
+      L.polygon(Z.amarilla.ll,{color:'#b07d00',weight:2,fillColor:'#f5b301',fillOpacity:.2,interactive:false}).addTo(capa);
+      L.polygon(Z.precaucion.ll,{color:'#b07d00',weight:1.5,dashArray:'5 4',className:'z-rayas',interactive:false}).addTo(capa);
+      L.polygon(Z.roja.ll,{color:'#b71c1c',weight:2.5,fillColor:'#e53935',fillOpacity:.28,interactive:false}).addTo(capa);
+      EJE.forEach(r=>L.polyline(r.ll,{color:'#5d3000',weight:3,interactive:false}).addTo(capa))},
+    ejemplosSOS(n){
+      const ok=p=>{const q=P(p);return enZxy(q,'roja')&&!enZxy(q,'cauce')},c=ALUVION_CALLES.filter(ok),o=[];
+      while(o.length<n){const p=c[Math.floor(Math.random()*c.length)],j=[p[0]+(Math.random()-.5)*.0004,p[1]+(Math.random()-.5)*.0004];o.push(ok(j)?j:p)}   // siempre dentro de la zona roja
+      return o},
+    async sortear(){
+      const pick=f=>{const c=ALUVION_CALLES.filter(f);return c[Math.floor(Math.random()*c.length)]};
+      const r=pick(p=>{const q=P(p);return enZxy(q,'roja')&&!enZxy(q,'cauce')}),a=pick(p=>zonaXY(P(p))==='amarilla'),f=pick(p=>{const q=P(p);return zonaXY(q)==='fuera'&&borde(q,'amarilla').d>300});
+      return[{nombre:'Sorteada · zona roja',ll:r},{nombre:'Sorteada · zona amarilla',ll:a},{nombre:'Sorteada · fuera de zona',ll:f}]},
+    async evaluar(me,ctx){
+      const o=ctx.opts,v=vMarcha(o),vm=v*1000/60,zona=zonaDe(me),ec=ejeCercano(me),hora=reloj(A.t).slice(0,5);
+      const tF=(ec.s/V_FRENTE_MS-A.t)/60;   // min hasta que el frente llegue al punto del eje más cercano (aguas arriba de la persona)
+      const zt={roja:'zona roja',amarilla:'zona amarilla',precaucion:'precaución extendida',fuera:'fuera de zona'}[zona];
+      const ev='Aluvión · quebradas de San Carlos de Apoquindo · hora simulada <b>'+hora+'</b> · su ubicación: <b>'+zt+'</b>';
+      const base={ev,_alu:{zona,s:ec.s},avisos:[]};
+      if(ctx.fase2)return Object.assign(base,{nivel:'ambar',icono:'⚠️',banner:'DESPUÉS DEL ALUVIÓN',instr:['No regrese a su casa hasta aviso oficial.','Pueden bajar nuevos flujos de barro.','No camine por calles con barro o agua.','Pida ayuda con el botón SOS si la necesita.'],
+        det:'<span class="k">Última actualización:</span> <b>'+hora+'</b> (hora simulada).',evitar:EVITAR});
+      if(zona==='fuera')return Object.assign(base,{nivel:'verde',icono:'✅',banner:'USTED NO ESTÁ EN ZONA DE RIESGO',
+        instr:['No se acerque a la zona.','Evite las calles afectadas.','Siga atento a nuevas alertas.'],
+        evitar:EVITAR,det:'Está a ~'+Math.round(borde(P(me),'amarilla').d)+' m del borde de la zona amarilla.'});
+      if(zona==='precaucion')return Object.assign(base,{nivel:'ambar',icono:'⚠️',banner:'PRECAUCIÓN',
+        instr:['Prepárese: puede llegar agua con barro.','No baje a calles bajas ni pasos bajo nivel.','Siga atento a nuevas alertas.'],
+        evitar:['Paul Harris','Av. Cristóbal Colón'],det:'Alcance extendido reportado (a verificar): el agua habría llegado hasta Cristóbal Colón con Manquehue.'});
+      const roja=zona==='roja',key=[me.lat.toFixed(5),me.lng.toFixed(5),o.pmr?1:0,zona].join('|');
+      let R=C.rutas.get(key);
+      if(roja&&!R){   // si ni en línea recta alcanza a salir, no hace falta calcular la ruta
+        const tMin=borde(P(me),'roja').d/vm;
+        if(tF<=0||tMin>tF-2)return vertical(base,{o,tF,tSal:tMin,estimada:true,hora})}
+      if(!R){
+        ctx.parcial(Object.assign({},base,roja?{nivel:'rojo',icono:'⚠️',banner:'ZONA ROJA',instr:['Aléjese del cauce ahora.','Calculando la salida más segura…']}:{nivel:'ambar',icono:'⚠️',banner:'ALÉJESE DE LA QUEBRADA',instr:['Calculando su ruta…']}));
+        // Si está dentro del cauce, la ruta parte desde el costado (su mismo lado del eje)
+        let s0=me,con=null;
+        if(enZona(me,'cauce')){
+          const a=ec.ram.xy[ec.k-1],b=ec.ram.xy[ec.k],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,n=[-dy/l,dx/l],off=CFG.cauce+12;
+          let best=null;
+          for(const sg of (ec.d>3&&ec.lado?[ec.lado]:[1,-1])){const q=[ec.x+n[0]*off*sg,ec.y+n[1]*off*sg];if(enZxy(q,'cauce'))continue;
+            const dd=Math.min(...destinos().filter(d=>!cruzaSegEje(q,P(d.ll))).map(d=>D2(q,P(d.ll))));if(!best||dd<best.dd)best={ll:Pinv(q),dd}}
+          if(best){s0=best.ll;con=[me,s0]}}
+        R=await calcularRuta(me,s0,con,roja,ec,o,ctx);
+        if(!ctx.ok())return null;
+        if(R&&!R.flecha&&!R.sinSalida)C.rutas.set(key,R)}
+      if(R&&R.sinSalida)return vertical(base,{o,tF,tSal:Infinity,sinSalida:true,hora});
+      if(!R)return Object.assign(base,{nivel:roja?'rojo':'ambar',icono:'⚠️',banner:roja?'SUBA A UN 2º PISO YA':'ALÉJESE DE LA QUEBRADA',instr:['Aléjese del cauce hacia terreno más alto.','No cruce las calles por donde baja el agua.'],reintentar:true});
+      C.ultima=R.fuente;C.rutaUltima=R;
+      const tSal=roja?R.salidaM/vm:0;
+      if(roja&&tSal>tF-2)return vertical(base,{o,tF,tSal,hora});
+      const d=R.dest,dn=d?(d.name||d.tipo):'zona segura',min=R.km*1000/vm;
+      if(R.fuente==='precargada')base.avisos.push('Usando datos precargados: los servicios de rutas no respondieron.');
+      if(R.flecha)base.avisos.push('No se pudo calcular una ruta por calles: se muestra la salida más corta. Ábrala en Google Maps.');
+      else if(C.fuenteDest!=='en vivo')base.avisos.push('Usando datos precargados (destinos seguros).');
+      if(o.pmr&&R.pasos)base.avisos.push('No hay una ruta sin escalones conocida: podría incluir escaleras.');
+      if(o.pmr&&/OSRM/.test(R.fuente))base.avisos.push('Ruta del servicio de respaldo: no se pudo garantizar que evite escaleras.');
+      const destTxt=d?'Destino sugerido: <b>'+html(dn)+'</b> · '+html(d.tipo)+(d.z!=null?' · cota '+Math.round(d.z)+' m':'')+' · '+fmt1(R.km)+' km, ~'+minTxt(min)+' a pie':'';
+      let instr,det,banner;
+      if(roja){
+        banner='EVACÚE AHORA';const rb=R.salidaLL?rumbo(me,R.salidaLL):'costado';
+        instr=['Salga hacia el '+rb+' por la ruta azul.','No cruce '+ec.calle+'.','Luego diríjase a '+dn+'.'];
+        det='Salir de la zona roja: <b>~'+minTxt(tSal)+'</b> ('+Math.round(R.salidaM)+' m a '+fmt1(v)+' km/h) · El barro podría llegar a su sector en <b>~<span id="tfr">'+minTxt(tF)+'</span></b> (estimación ilustrativa) · Margen: <b>'+minTxt(tF-tSal)+'</b> (mínimo exigido: 2 min).<br>'+destTxt;
+      }else{
+        banner='ALÉJESE DE LA QUEBRADA';
+        instr=['Diríjase a '+dn+' por la ruta azul.','Prepárese para evacuar.','No se acerque al cauce.'];
+        det=(tF>0?'El barro podría llegar a su sector en <b>~'+minTxt(tF)+'</b> (estimación ilustrativa).<br>':'')+destTxt+'<br><span class="k">Está en la zona amarilla, fuera de la zona roja: aléjese sin entrar a la roja.</span>';
+      }
+      const r=Object.assign(base,{nivel:roja?'rojo':'ambar',icono:roja?'🏃':'⚠️',banner,instr,det,
+        gm:d?gmaps(me,d.ll):null,ruta:{pts:R.pts,dest:d?{ll:d.ll,nombre:dn}:null,salidaLL:R.salidaLL,flecha:!!R.flecha},
+        ru:(R.names&&R.names.length?'Por: '+html(R.names.slice(0,6).join(' › '))+' · ':'')+'Ruta: '+html(R.fuente)+' · marcha '+fmt1(v)+' km/h.'});
+      r._alu.vertical=false;r._alu.tSalida=tSal;
+      r.voz=banner+'. '+instr.join(' ')+(roja?' Tiene unos '+Math.max(0,Math.round(tF-tSal))+' minutos de margen.':'');
+      return r}
+  };
+  // Controles de la animación (existen en el DOM; solo se muestran en este escenario)
+  $('aplay').onclick=()=>{if(ST.esc!==S)return;A.play?pausa():play()};
+  const VELS=[1,10,60];
+  $('avel').onclick=()=>{A.vel=VELS[(VELS.indexOf(A.vel)+1)%VELS.length];const sig=VELS[(VELS.indexOf(A.vel)+1)%VELS.length];
+    $('avel').textContent='×'+A.vel;$('avel').setAttribute('aria-label','Velocidad ×'+A.vel+'. Toque para cambiar a ×'+sig)};
+  $('areset').onclick=()=>{if(ST.esc!==S)return;pausa();irA(0)};
+  $('a1741').onclick=()=>{if(ST.esc!==S)return;irA(41*60)};
+  $('params').addEventListener('change',e=>{if(ST.esc===S&&e.target.id==='vfr'){S.leerForm();if(ST.active)evaluar()}});
+  // API mínima para la verificación automática
+  S._test={rutaUltima:()=>{const R=C.rutaUltima;if(!R)return null;const d=R.dest;
+      return{pts:R.pts.map(p=>[+(+p[0]).toFixed(5),+(+p[1]).toFixed(5)]),km:+R.km.toFixed(3),names:R.names||[],pasos:!!R.pasos,salidaM:R.salidaM,fuente:R.fuente,flecha:!!R.flecha,
+        dest:d?[+d.ll.lat.toFixed(5),+d.ll.lng.toFixed(5),d.z==null?null:Math.round(d.z),d.name||'',d.tipo]:null}},zonaDe,ejeCercano,validar,cruzaEje:pts=>cruzaEje(pts.map(P)),enZona,A,RAM,Z,irA,tFin};
+  return S;
+})();
+
+/* =====================================================================================
+   ESCENARIOS REGISTRADOS (para agregar uno nuevo, ver "CÓMO AGREGAR UN ESCENARIO" arriba)
+   ===================================================================================== */
+const SCENARIOS={tsunami_valpo:TSU,aluvion_lascondes:ALU};
+
+/* ---------- Eventos de la interfaz ---------- */
+document.querySelectorAll('[data-esc]').forEach(b=>b.onclick=()=>abrirEscenario(b.dataset.esc));
+document.querySelectorAll('#locs [data-i]').forEach(b=>b.onclick=()=>sel(+b.dataset.i));
+$('dice').onclick=sortear;
+$('go').onclick=emitir;
+$('mute').onclick=stopSound;$('saeMute').onclick=stopSound;
+$('saeVer').onclick=()=>{$('sae').hidden=true;$('panel').scrollTop=0;$('leer').focus({preventScroll:true})};
+$('leer').onclick=()=>{const r=ST.res;if(r)hablar(r.voz||(r.banner+'. '+(r.instr||[]).join(' ')))};
+$('home').onclick=irInicio;
+$('bmap').onclick=()=>tiles((ti+1)%T.length);
+$('bley').onclick=()=>{const h=!$('ley').hidden;$('ley').hidden=h;$('bley').setAttribute('aria-expanded',!h)};
+$('fmen').onclick=()=>{if(fsi>0){fsi--;aplicarFS()}};$('fmas').onclick=()=>{if(fsi<FS.length-1){fsi++;aplicarFS()}};
+$('info').onclick=abrirAcerca;$('iniInfo').onclick=abrirAcerca;
+$('iniDesp').onclick=()=>abrirDespacho();$('vdesp').onclick=()=>abrirDespacho(ST.esc&&ST.esc.id);
+$('edit').onclick=()=>{stopSound();callar();ST.active=false;ST.seq++;capaRes.clearLayers();vistaAlerta(false);map.setView(ST.me,ST.esc.zoom)};
+$('fase2').onclick=()=>{ST.fase2=!ST.fase2;$('fase2').textContent=ST.fase2?'Volver a la alerta':'Fase 2: después';evaluar()};
+$('pisoSi').onclick=()=>{$('pmrq').hidden=true};
+$('pisoNo').onclick=()=>{const r=ST.res;if(r&&r.sinPiso){ST.res=r.sinPiso;pintar(r.sinPiso,true)}};
+$('tpmr').onclick=()=>{ST.pmr=!ST.pmr;syncToggles();if(ST.active)evaluar()};
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
+  if(!$('acerca').hidden)$('acerca').hidden=true;else if(!$('sosm').hidden)cerrarSOS();else if(!$('desp').hidden)$('desp').hidden=true;else if(!$('sae').hidden)$('saeVer').click()});
+
+aplicarFS();validarSAE();
+const h0=location.hash.slice(1);if(SCENARIOS[h0])abrirEscenario(h0);
+addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(SCENARIOS[h]&&(!ST.esc||ST.esc.id!==h))abrirEscenario(h)});
+
+// API de verificación (solo lectura): usada por tools/verificar.mjs
+window.DMK={
+  estado:()=>({esc:ST.esc&&ST.esc.id,active:ST.active,cur:ST.cur,me:ST.me&&[ST.me.lat,ST.me.lng],seq:ST.seq,fase2:ST.fase2,listo:!!(ST.res&&ST.res._seq===ST.seq),
+    res:ST.res&&{nivel:ST.res.nivel,banner:ST.res.banner,instr:ST.res.instr,avisos:ST.res.avisos,evitar:ST.res.evitar,alu:ST.res._alu,
+      ruta:ST.res.ruta&&ST.res.ruta.pts?{pts:ST.res.ruta.pts.map(p=>Array.isArray(p)?p:[p.lat,p.lng]),flecha:!!ST.res.ruta.flecha,dest:ST.res.ruta.dest&&[ST.res.ruta.dest.ll.lat,ST.res.ruta.dest.ll.lng]}:null,
+      fuente:ST.esc&&ST.esc.estadoDatos()}}),
+  audio:()=>AC?AC.state:null,
+  timers:()=>ST.timers.size,
+  capas:()=>({esc:capaEsc?capaEsc.getLayers().length:0,res:capaRes?capaRes.getLayers().length:0}),
+  sos:()=>SOS.map(r=>({id:r.id,esc:r.esc,tipo:r.tipo,prioridad:r.prioridad,zona:r.zona,ll:[r.ll.lat,r.ll.lng]})),
+  sae:validarSAE,
+  alu:ALU._test,
+  ubicar:(lat,lng)=>{ST.cur=-1;chips();moveMe(L.latLng(lat,lng))},
+};
+}
+</script>
+</body>
+</html>
