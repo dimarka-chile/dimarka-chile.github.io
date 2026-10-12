@@ -2,7 +2,7 @@
 
 **Prototipo web (simulación no oficial).** Se abre en el navegador del celular o del computador; no requiere instalación:
 
-👉 **https://marcovichalonso.github.io/dimarka-simulador/**
+👉 **https://dimarka-chile.github.io/**
 
 DIMARKA propone ampliar el Sistema de Alerta de Emergencia (SAE, Cell Broadcast) con un enlace liviano. Ese enlace abre una página que adapta la instrucción a la ubicación de cada persona. La página muestra:
 
